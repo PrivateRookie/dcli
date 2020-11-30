@@ -4,6 +4,7 @@ use std::{
     collections::HashMap,
     fs::File,
     io::{Read, Write},
+    process::Stdio,
 };
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -36,8 +37,14 @@ impl Profile {
         uri
     }
 
-    pub fn cmd(&self) -> std::process::Command {
+    pub fn cmd(&self, piped: bool) -> std::process::Command {
         let mut command = std::process::Command::new("mysql");
+        if piped {
+            command
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped());
+        }
         if let Some(user) = &self.user {
             command.args(&["--user", user]);
         }
@@ -46,7 +53,7 @@ impl Profile {
         }
         command.args(&["--host", &self.host, "--port", &self.port.to_string()]);
         if let Some(db) = &self.db {
-            command.arg(db);
+            command.args(&["--database", db]);
         }
         command
     }

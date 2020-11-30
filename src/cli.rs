@@ -1,5 +1,5 @@
 use crate::config::{Config, Profile};
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use comfy_table::modifiers::UTF8_ROUND_CORNERS;
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::*;
@@ -12,6 +12,16 @@ pub enum Command {
     Conn {
         /// 连接配置名称
         profile: String,
+    },
+
+    /// 使用一个配置执行命令
+    Exec {
+        /// 配置名
+        #[structopt(short, long)]
+        profile: String,
+
+        /// 命令
+        command: Vec<String>,
     },
 
     /// 列出所有配置
@@ -31,12 +41,8 @@ impl Command {
     pub fn run(self, config: &mut Config) -> Result<()> {
         match self {
             Command::List => {
-                let mut table = Table::new();
-                table
-                    .load_preset(UTF8_FULL)
-                    .apply_modifier(UTF8_ROUND_CORNERS)
-                    .set_content_arrangement(ContentArrangement::Dynamic)
-                    .set_header(vec!["name", "user", "host", "port", "database", "uri"]);
+                let mut table = default_table();
+                table.set_header(vec!["name", "user", "host", "port", "database", "uri"]);
                 for (p_name, profile) in &config.profiles {
                     table.add_row(vec![
                         p_name,
@@ -50,15 +56,18 @@ impl Command {
                 println!("{}", table);
             }
             Command::Conn { ref profile } => {
-                let msg = format!(
-                    "can't find {}, available option are: {:?}",
-                    &profile,
-                    config.profiles.keys()
-                );
-                let profile = config.profiles.get(profile).expect(&msg);
-                let mut cmd = profile.cmd();
-                let child = cmd.spawn().expect("run failed");
-                child.wait_with_output().unwrap();
+                if let Some(profile) = config.profiles.get(profile) {
+                    let mut cmd = profile.cmd(false);
+                    let child = cmd.spawn().expect("run failed");
+                    child.wait_with_output().unwrap();
+                } else {
+                    let mut table = default_table();
+                    table.set_header(vec!["name"]);
+                    config.profiles.keys().into_iter().for_each(|key| {
+                        table.add_row(vec![key]);
+                    });
+                    println!("未找到配置文件 {}, 请在以下选项中选择\n {}", profile, table);
+                }
             }
             Command::Add(AddProfile {
                 name,
@@ -94,6 +103,22 @@ impl Command {
                     println!("配置已删除.");
                 }
             }
+            Command::Exec { profile, command } => {
+                if let Some(profile) = config.profiles.get(&profile) {
+                    let mut cmd = profile.cmd(true);
+                    cmd.arg(&format!("--execute={}", command.join(" ")));
+                    let child = cmd.spawn().with_context(|| "无法运行")?;
+                    let output = child.wait_with_output().unwrap();
+                    println!("{}", String::from_utf8(output.stdout).unwrap());
+                } else {
+                    let mut table = default_table();
+                    table.set_header(vec!["name"]);
+                    config.profiles.keys().into_iter().for_each(|key| {
+                        table.add_row(vec![key]);
+                    });
+                    println!("未找到配置文件 {}, 请在以下选项中选择\n {}", profile, table);
+                }
+            }
         }
         Ok(())
     }
@@ -127,4 +152,13 @@ pub struct AddProfile {
     /// 是否强制覆盖
     #[structopt(short, long)]
     pub force: bool,
+}
+
+fn default_table() -> Table {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL)
+        .apply_modifier(UTF8_ROUND_CORNERS)
+        .set_content_arrangement(ContentArrangement::Dynamic);
+    table
 }
