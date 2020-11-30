@@ -1,6 +1,11 @@
+use anyhow::{Context, Result};
 use comfy_table::Table;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, io::Read};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{Read, Write},
+};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -16,7 +21,7 @@ enum Command {
     List,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 struct Config {
     profiles: HashMap<String, Profile>,
 }
@@ -62,28 +67,34 @@ impl Profile {
 }
 
 impl Config {
-    pub fn load() -> Result<Self, String> {
-        let home = std::env::var("HOME").map_err(|_| format!("$HOME is not set"))?;
+    pub fn load() -> Result<Self> {
+        let home = std::env::var("HOME").with_context(|| "未设置 $HOME 环境变量")?;
         let mut file = std::path::Path::new(&home).to_path_buf();
         file.push(".config");
         file.push("dcli.toml");
-        let mut content = String::new();
-        std::fs::File::open(&file)
-            .expect(&format!(
-                "fail to load config file {}",
-                file.to_str().unwrap()
-            ))
-            .read_to_string(&mut content)
-            .expect("read failed");
-        let config: Config =
-            toml::from_str(&content).map_err(|e| format!("fail to read config {}", e))?;
-        Ok(config)
+        if file.exists() {
+            let mut content = String::new();
+            File::open(&file)
+                .with_context(|| format!("fail to load config file {}", file.to_str().unwrap()))?
+                .read_to_string(&mut content)
+                .expect("read failed");
+            let config: Config = toml::from_str(&content).with_context(|| "无法打开配置文件")?;
+            Ok(config)
+        } else {
+            println!("未找到配置文件, 使用默认配置");
+            let config = Self::default();
+            let mut file = File::create(file).with_context(|| "无法创建配置文件")?;
+            let config_str = toml::to_string_pretty(&config).unwrap();
+            file.write_all(config_str.as_bytes())
+                .with_context(|| "无法写入配置文件")?;
+            Ok(config)
+        }
     }
 }
 
-fn main() {
+fn main() -> Result<()> {
     let cmd = Command::from_args();
-    let config = Config::load().unwrap();
+    let config = Config::load()?;
     match cmd {
         Command::List => {
             let mut table = Table::new();
@@ -112,4 +123,5 @@ fn main() {
             child.wait_with_output().unwrap();
         }
     }
+    Ok(())
 }
