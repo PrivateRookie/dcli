@@ -1,0 +1,14 @@
+[package]
+name = "dcli"
+version = "0.1.0"
+authors = ["PrivateRookie <996514515@qq.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+structopt = "*"
+serde = { version = "*", features = ["derive"] }
+toml = "*"
+shellexpand = "*"
+comfy-table = "1.3.0"
