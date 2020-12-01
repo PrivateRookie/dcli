@@ -6,10 +6,13 @@ use structopt::StructOpt;
 
 pub mod cli;
 pub mod config;
+pub mod mysql;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let cmd = Command::from_args();
     let mut config = Config::load()?;
-    cmd.run(&mut config)?;
+    pretty_env_logger::init();
+    cmd.run(&mut config).await?;
     Ok(())
 }

@@ -76,7 +76,7 @@ impl Config {
             File::open(&file)
                 .with_context(|| format!("fail to load config file {}", file.to_str().unwrap()))?
                 .read_to_string(&mut content)
-                .expect("read failed");
+                .unwrap();
             let config: Config = toml::from_str(&content).with_context(|| "无法打开配置文件")?;
             Ok(config)
         } else {
