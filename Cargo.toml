@@ -7,6 +7,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+#TODO use clap 3.x when arg_enum! is ok and delete structopt
+clap = "2.33.3"
 structopt = "0.3.20"
 serde = { version = "1.0.117", features = ["derive"] }
 toml = "0.5.7"

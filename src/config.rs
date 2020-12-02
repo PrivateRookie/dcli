@@ -1,4 +1,9 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
+use clap::arg_enum;
+use comfy_table::{
+    presets::{ASCII_FULL, ASCII_MARKDOWN, UTF8_FULL, UTF8_HORIZONTAL_BORDERS_ONLY},
+    ContentArrangement, Table,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -10,6 +15,7 @@ use std::{
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Config {
     pub profiles: HashMap<String, Profile>,
+    pub table_style: TableStyle,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -19,6 +25,22 @@ pub struct Profile {
     pub db: Option<String>,
     pub user: Option<String>,
     pub password: Option<String>,
+}
+
+arg_enum! {
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub enum TableStyle {
+        AsciiFull,
+        AsciiMd,
+        Utf8Full,
+        Utf8HBorderOnly,
+    }
+}
+
+impl Default for TableStyle {
+    fn default() -> Self {
+        TableStyle::Utf8Full
+    }
 }
 
 impl Profile {
@@ -90,9 +112,41 @@ impl Config {
     pub fn save(&self) -> Result<()> {
         let path = Self::config_path()?;
         let mut file = File::create(path).with_context(|| "无法打开配置文件")?;
-        let config_str = toml::to_string_pretty(self).unwrap();
+        // NOTE toml 系列化问题
+        let tmp_value = toml::Value::try_from(self).unwrap();
+        let config_str = toml::to_string_pretty(&tmp_value).unwrap();
         file.write_all(config_str.as_bytes())
             .with_context(|| "无法写入配置文件")?;
         Ok(())
+    }
+
+    pub fn new_table(&self) -> Table {
+        let mut table = Table::new();
+        let preset = match self.table_style {
+            TableStyle::AsciiFull => ASCII_FULL,
+            TableStyle::AsciiMd => ASCII_MARKDOWN,
+            TableStyle::Utf8Full => UTF8_FULL,
+            TableStyle::Utf8HBorderOnly => UTF8_HORIZONTAL_BORDERS_ONLY,
+        };
+        table
+            .load_preset(preset)
+            .set_content_arrangement(ContentArrangement::Dynamic);
+        table
+    }
+
+    pub fn try_get_profile(&self, name: &str) -> Result<&Profile> {
+        if let Some(profile) = self.profiles.get(name) {
+            Ok(profile)
+        } else {
+            let mut table = self.new_table();
+            table.set_header(vec!["name"]);
+            self.profiles.keys().into_iter().for_each(|key| {
+                table.add_row(vec![key]);
+            });
+            Err(anyhow!(format!(
+                "未找到配置文件 {}, 请在以下选项中选择\n {}",
+                name, table
+            )))
+        }
     }
 }

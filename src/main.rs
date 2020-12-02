@@ -1,5 +1,5 @@
 use anyhow::Result;
-use cli::Command;
+use cli::DCliCommand;
 
 use config::Config;
 use structopt::StructOpt;
@@ -10,7 +10,7 @@ pub mod mysql;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let cmd = Command::from_args();
+    let cmd = DCliCommand::from_args();
     let mut config = Config::load()?;
     pretty_env_logger::init();
     cmd.run(&mut config).await?;
