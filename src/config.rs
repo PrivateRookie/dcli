@@ -52,7 +52,11 @@ impl Profile {
         if let Some(pass) = &self.password {
             uri.push_str(&format!(":{}", pass))
         }
-        uri.push_str(&format!("{}:{}", self.host, self.port));
+        if self.user.is_none() && self.password.is_none() {
+            uri.push_str(&format!("{}:{}", self.host, self.port));
+        } else {
+            uri.push_str(&format!("@{}:{}", self.host, self.port));
+        }
         if let Some(db) = &self.db {
             uri.push_str(&format!("/{}", db));
         }
