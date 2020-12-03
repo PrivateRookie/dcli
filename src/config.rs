@@ -148,7 +148,7 @@ impl Config {
                 table.add_row(vec![key]);
             });
             Err(anyhow!(format!(
-                "未找到配置文件 {}, 请在以下选项中选择\n {}",
+                "未找到配置文件 {}, 请在以下选项中选择\n{}",
                 name, table
             )))
         }
