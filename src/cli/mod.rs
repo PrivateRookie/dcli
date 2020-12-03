@@ -7,6 +7,8 @@ use comfy_table::*;
 use sqlx::{mysql::MySqlRow, Column, Row, TypeInfo, Value, ValueRef};
 use structopt::StructOpt;
 
+mod shell;
+
 #[derive(Debug, StructOpt)]
 #[structopt(name = "dcli", about = "数据连接工具.")]
 pub enum DCliCommand {
@@ -34,6 +36,9 @@ pub enum DCliCommand {
         /// 命令
         command: Vec<String>,
     },
+
+    /// 运行 shell
+    Shell,
 }
 
 #[derive(Debug, StructOpt)]
@@ -139,6 +144,39 @@ impl DCliCommand {
                         }
                     }
                 }
+                Ok(())
+            }
+            DCliCommand::Shell => {
+                use rustyline::error::ReadlineError;
+                let mut rl = shell::get_editor();
+                let mut count = 1;
+                rl.load_history("history.txt").unwrap();
+                loop {
+                    let p = format!("{}> ", count);
+                    rl.helper_mut().expect("No helper").colored_prompt =
+                        format!("\x1b[1;32m{}\x1b[0m", p);
+                    let readline = rl.readline(&p);
+                    match readline {
+                        Ok(line) => {
+                            rl.add_history_entry(line.as_str());
+                            println!("Line: {}", line);
+                        }
+                        Err(ReadlineError::Interrupted) => {
+                            println!("CTRL-C");
+                            break;
+                        }
+                        Err(ReadlineError::Eof) => {
+                            println!("CTRL-D");
+                            break;
+                        }
+                        Err(err) => {
+                            println!("Error: {:?}", err);
+                            break;
+                        }
+                    }
+                    count += 1;
+                }
+                rl.append_history("history.txt");
                 Ok(())
             }
         }

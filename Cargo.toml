@@ -17,3 +17,7 @@ sqlx = { version = "0.4.1", features = ["runtime-tokio-rustls", "mysql", "all-ty
 tokio = { version = "0.2.23", features = ["full"] }
 serde_json = "*"
 pretty_env_logger = "*"
+
+sqlparser = "*"
+rustyline = "*"
+rustyline-derive = "*"

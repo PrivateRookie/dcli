@@ -1,0 +1,6 @@
+#V2
+print<>
+let a = { sen };
+le
+
+let a = { sen };

@@ -21,7 +21,7 @@ pub struct Config {
 
 #[derive(Debug, Clone, Serialize, Deserialize, StructOpt)]
 pub struct Profile {
-    /// 数据库 hostname, IPv6请使用带'[]'包围的域名
+    /// 数据库 hostname, IPv6地址请使用带'[]'包围
     #[structopt(short = "h", long, default_value = "localhost")]
     pub host: String,
 
