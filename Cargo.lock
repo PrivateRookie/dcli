@@ -341,7 +341,6 @@ name = "dcli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap",
  "comfy-table",
  "pretty_env_logger",
  "serde",

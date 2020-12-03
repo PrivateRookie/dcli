@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Context, Result};
-use clap::arg_enum;
 use comfy_table::{
     presets::{ASCII_FULL, ASCII_MARKDOWN, UTF8_FULL, UTF8_HORIZONTAL_BORDERS_ONLY},
     ContentArrangement, Table,
@@ -10,6 +9,7 @@ use std::{
     fs::File,
     io::{Read, Write},
     process::Stdio,
+    str::FromStr,
 };
 use structopt::StructOpt;
 
@@ -40,21 +40,73 @@ pub struct Profile {
     /// 密码
     #[structopt(short = "pass", long)]
     pub password: Option<String>,
+
+    /// SSL 模式
+    #[structopt(long)]
+    pub ssl_mode: Option<SslMode>,
+
+    /// SSL CA 文件路径
+    #[structopt(long, parse(from_os_str))]
+    pub ssl_ca: Option<std::path::PathBuf>,
 }
 
-arg_enum! {
-    #[derive(Debug, Clone, Serialize, Deserialize)]
-    pub enum TableStyle {
-        AsciiFull,
-        AsciiMd,
-        Utf8Full,
-        Utf8HBorderOnly,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SslMode {
+    Disabled,
+    Preferred,
+    Required,
+    VerifyCa,
+    VerifyIdentity,
+}
+
+impl Default for SslMode {
+    fn default() -> Self {
+        SslMode::Preferred
     }
+}
+
+impl FromStr for SslMode {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let val = match &*s.to_ascii_lowercase() {
+            "disabled" => SslMode::Disabled,
+            "preferred" => SslMode::Preferred,
+            "required" => SslMode::Required,
+            "verify_ca" => SslMode::VerifyCa,
+            "verify_identity" => SslMode::VerifyIdentity,
+            _ => Err(anyhow!(format!("无效值: {:?}", s)))?,
+        };
+        Ok(val)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TableStyle {
+    AsciiFull,
+    AsciiMd,
+    Utf8Full,
+    Utf8HBorderOnly,
 }
 
 impl Default for TableStyle {
     fn default() -> Self {
         TableStyle::Utf8Full
+    }
+}
+
+impl FromStr for TableStyle {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let val = match &*s.to_ascii_lowercase() {
+            "asciifull" => TableStyle::AsciiFull,
+            "asciimd" => TableStyle::AsciiMd,
+            "utf8full" => TableStyle::Utf8Full,
+            "utf8hborderonly" => TableStyle::Utf8HBorderOnly,
+            _ => Err(anyhow!(format!("无效值: {:?}", s)))?,
+        };
+        Ok(val)
     }
 }
 
