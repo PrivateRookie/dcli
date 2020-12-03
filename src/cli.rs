@@ -41,7 +41,17 @@ pub enum ProfileCmd {
     /// 列出所有配置
     List,
     /// 添加一个配置
-    Add(AddProfile),
+    Add {
+        /// 配置名称
+        name: String,
+
+        /// 是否强制覆盖
+        #[structopt(short, long)]
+        force: bool,
+
+        #[structopt(flatten)]
+        profile: Profile,
+    },
     /// 删除一个配置
     Del {
         /// 配置名
@@ -55,37 +65,6 @@ pub enum StyleCmd {
     Table {
         /// 选项 AsciiFull AsciiMd Utf8Full Utf8HBorderOnly
         style: TableStyle,
-    },
-}
-
-#[derive(Debug, StructOpt)]
-pub enum Command {
-    /// 使用一个配置打开连接
-    Conn {
-        /// 连接配置名称
-        profile: String,
-    },
-
-    /// 使用一个配置执行命令
-    Exec {
-        /// 配置名
-        #[structopt(short, long)]
-        profile: String,
-
-        /// 命令
-        command: Vec<String>,
-    },
-
-    /// 列出所有配置
-    List,
-
-    /// 添加一个配置
-    Add(AddProfile),
-
-    /// 删除一个配置
-    Del {
-        /// 配置名
-        name: String,
     },
 }
 
@@ -135,28 +114,17 @@ impl DCliCommand {
                         }
                         println!("{}", table);
                     }
-                    ProfileCmd::Add(AddProfile {
+                    ProfileCmd::Add {
                         name,
-                        host,
-                        port,
-                        user,
-                        password,
-                        db,
                         force,
-                    }) => {
-                        let profile = Profile {
-                            host: host.clone(),
-                            port: port.clone(),
-                            user: user.clone(),
-                            password: password.clone(),
-                            db: db.clone(),
-                        };
+                        profile,
+                    } => {
                         if let Ok(_) = config.try_get_profile(name) {
                             if !force {
                                 Err(anyhow!(format!("{} 配置已存在!", name)))?;
                             }
                         } else {
-                            config.profiles.insert(name.clone(), profile);
+                            config.profiles.insert(name.clone(), profile.clone());
                             config.save()?;
                             println!("配置已保存.");
                         }

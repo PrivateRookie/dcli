@@ -11,6 +11,7 @@ use std::{
     io::{Read, Write},
     process::Stdio,
 };
+use structopt::StructOpt;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Config {
@@ -18,12 +19,26 @@ pub struct Config {
     pub table_style: TableStyle,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, StructOpt)]
 pub struct Profile {
+    /// 数据库 hostname, IPv6请使用带'[]'包围的域名
+    #[structopt(short = "h", long, default_value = "localhost")]
     pub host: String,
+
+    /// 数据库 port 0 ~ 65536
+    #[structopt(default_value = "3306", short = "P", long)]
     pub port: u16,
+
+    /// 数据库名称
+    #[structopt(short, long)]
     pub db: Option<String>,
+
+    /// 用户名
+    #[structopt(short, long)]
     pub user: Option<String>,
+
+    /// 密码
+    #[structopt(short = "pass", long)]
     pub password: Option<String>,
 }
 
