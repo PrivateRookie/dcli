@@ -1,4 +1,0 @@
-#V2
-SELECT from d
-
-exit
