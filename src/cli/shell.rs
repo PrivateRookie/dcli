@@ -1,4 +1,8 @@
-use std::borrow::Cow::{self, Borrowed, Owned};
+use colored::*;
+use std::{
+    borrow::Cow::{self, Borrowed, Owned},
+    collections::{HashMap, HashSet},
+};
 
 use rustyline::completion::{Completer, FilenameCompleter, Pair};
 use rustyline::config::OutputStreamType;
@@ -12,10 +16,64 @@ use rustyline_derive::Helper;
 #[derive(Helper)]
 pub struct MyHelper {
     pub completer: FilenameCompleter,
-    pub highlighter: MatchingBracketHighlighter,
+    pub highlighter: FooHighlighter,
+    // pub highlighter: MatchingBracketHighlighter,
     pub validator: MatchingBracketValidator,
     pub hinter: HistoryHinter,
     pub colored_prompt: String,
+}
+
+#[derive(Debug)]
+pub struct DataBaseCompleter {
+    pub database: HashSet<String>,
+    pub tables: HashSet<String>,
+    pub columns: HashMap<String, HashSet<String>>,
+}
+
+#[derive(Debug)]
+pub struct FooHighlighter {}
+
+impl Highlighter for FooHighlighter {
+    fn highlight<'l>(&self, line: &'l str, pos: usize) -> Cow<'l, str> {
+        if let Some(idx) = line.find("SELECT") {
+            let mut copy = line.to_owned();
+            if idx + 6 > copy.len() {
+                copy.replace_range(idx.., &"SELECT"[..(copy.len() - idx)].red().to_string());
+            } else {
+                copy.replace_range(idx..(idx + 6), &"SELECT".red().to_string());
+            }
+            Owned(copy)
+        } else {
+            Borrowed(line)
+        }
+    }
+
+    fn highlight_prompt<'b, 's: 'b, 'p: 'b>(
+        &'s self,
+        prompt: &'p str,
+        default: bool,
+    ) -> Cow<'b, str> {
+        let mut copy = prompt.to_owned();
+        copy.replace_range(.., &"HIGT".red().to_string());
+        Owned(copy)
+    }
+
+    fn highlight_hint<'h>(&self, hint: &'h str) -> Cow<'h, str> {
+        Borrowed(hint)
+    }
+
+    fn highlight_candidate<'c>(
+        &self,
+        candidate: &'c str,
+        completion: CompletionType,
+    ) -> Cow<'c, str> {
+        let _ = completion;
+        Borrowed(candidate)
+    }
+
+    fn highlight_char(&self, line: &str, pos: usize) -> bool {
+        true
+    }
 }
 
 impl Completer for MyHelper {
@@ -87,7 +145,8 @@ pub fn get_editor() -> Editor<MyHelper> {
         .build();
     let helper = MyHelper {
         completer: FilenameCompleter::new(),
-        highlighter: MatchingBracketHighlighter::new(),
+        highlighter: FooHighlighter {},
+        // highlighter: MatchingBracketHighlighter::new(),
         hinter: HistoryHinter {},
         colored_prompt: "".to_string(),
         validator: MatchingBracketValidator::new(),
@@ -97,4 +156,14 @@ pub fn get_editor() -> Editor<MyHelper> {
     rl.bind_sequence(KeyEvent::alt('N'), Cmd::HistorySearchForward);
     rl.bind_sequence(KeyEvent::alt('P'), Cmd::HistorySearchBackward);
     rl
+}
+
+#[test]
+fn test_sql() {
+    use sqlparser::dialect::GenericDialect;
+    use sqlparser::parser::Parser;
+    let sql = "SELECT a, b";
+    let dialect = GenericDialect {};
+    let ast = Parser::parse_sql(&dialect, sql).unwrap();
+    dbg!(ast);
 }

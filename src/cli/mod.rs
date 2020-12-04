@@ -38,7 +38,11 @@ pub enum DCliCommand {
     },
 
     /// 运行 shell
-    Shell,
+    Shell {
+        /// 配置名
+        #[structopt(short, long)]
+        profile: String,
+    },
 }
 
 #[derive(Debug, StructOpt)]
@@ -146,36 +150,43 @@ impl DCliCommand {
                 }
                 Ok(())
             }
-            DCliCommand::Shell => {
+            DCliCommand::Shell { profile } => {
+                let profile = config.try_get_profile(profile)?;
+                let mut conn = connect(&profile).await?;
+                let tables = crate::mysql::scan_database(&mut conn).await?;
+                println!("get tables: {}", tables.join(", "));
+                let tables = crate::mysql::scan_database(&mut conn).await?;
+                println!("get tables: {}", tables.join(", "));
+
                 use rustyline::error::ReadlineError;
                 let mut rl = shell::get_editor();
                 let mut count = 1;
                 rl.load_history("history.txt").unwrap();
-                loop {
-                    let p = format!("{}> ", count);
-                    rl.helper_mut().expect("No helper").colored_prompt =
-                        format!("\x1b[1;32m{}\x1b[0m", p);
-                    let readline = rl.readline(&p);
-                    match readline {
-                        Ok(line) => {
-                            rl.add_history_entry(line.as_str());
-                            println!("Line: {}", line);
-                        }
-                        Err(ReadlineError::Interrupted) => {
-                            println!("CTRL-C");
-                            break;
-                        }
-                        Err(ReadlineError::Eof) => {
-                            println!("CTRL-D");
-                            break;
-                        }
-                        Err(err) => {
-                            println!("Error: {:?}", err);
-                            break;
-                        }
-                    }
-                    count += 1;
-                }
+                // loop {
+                //     let p = format!("{}> ", count);
+                //     rl.helper_mut().expect("No helper").colored_prompt =
+                //         format!("\x1b[1;32m{}\x1b[0m", p);
+                //     let readline = rl.readline(&p);
+                //     match readline {
+                //         Ok(line) => {
+                //             rl.add_history_entry(line.as_str());
+                //             println!("Line: {}", line);
+                //         }
+                //         Err(ReadlineError::Interrupted) => {
+                //             println!("CTRL-C");
+                //             break;
+                //         }
+                //         Err(ReadlineError::Eof) => {
+                //             println!("CTRL-D");
+                //             break;
+                //         }
+                //         Err(err) => {
+                //             println!("Error: {:?}", err);
+                //             break;
+                //         }
+                //     }
+                //     count += 1;
+                // }
                 rl.append_history("history.txt");
                 Ok(())
             }

@@ -1,6 +1,4 @@
 #V2
-print<>
-let a = { sen };
-le
+SELECT from d
 
-let a = { sen };
+exit
