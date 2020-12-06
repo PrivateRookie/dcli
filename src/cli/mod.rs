@@ -7,7 +7,7 @@ use comfy_table::*;
 use sqlx::{mysql::MySqlRow, Column, Row, TypeInfo, Value, ValueRef};
 use structopt::StructOpt;
 
-mod shell;
+pub mod shell;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "dcli", about = "数据连接工具.")]
@@ -22,7 +22,7 @@ pub enum DCliCommand {
         #[structopt(subcommand)]
         cmd: StyleCmd,
     },
-    /// 使用一个配置打开连接
+    /// 使用 `mysql` 命令连接到 mysql
     Conn {
         /// 连接配置名称
         profile: String,
@@ -37,7 +37,7 @@ pub enum DCliCommand {
         command: Vec<String>,
     },
 
-    /// 运行 shell
+    /// 运行连接到 mysql 的 shell
     Shell {
         /// 配置名
         #[structopt(short, long)]
@@ -133,7 +133,9 @@ impl DCliCommand {
                                 Err(anyhow!(format!("{} 配置已存在!", name)))?;
                             }
                         } else {
-                            config.profiles.insert(name.clone(), profile.clone());
+                            let mut cp = profile.clone();
+                            cp.name = name.clone();
+                            config.profiles.insert(name.clone(), cp);
                             config.save()?;
                             println!("配置已保存.");
                         }
@@ -150,46 +152,7 @@ impl DCliCommand {
                 }
                 Ok(())
             }
-            DCliCommand::Shell { profile } => {
-                let profile = config.try_get_profile(profile)?;
-                let mut conn = connect(&profile).await?;
-                let tables = crate::mysql::scan_database(&mut conn).await?;
-                println!("get tables: {}", tables.join(", "));
-                let tables = crate::mysql::scan_database(&mut conn).await?;
-                println!("get tables: {}", tables.join(", "));
-
-                use rustyline::error::ReadlineError;
-                let mut rl = shell::get_editor();
-                let mut count = 1;
-                rl.load_history("history.txt").unwrap();
-                // loop {
-                //     let p = format!("{}> ", count);
-                //     rl.helper_mut().expect("No helper").colored_prompt =
-                //         format!("\x1b[1;32m{}\x1b[0m", p);
-                //     let readline = rl.readline(&p);
-                //     match readline {
-                //         Ok(line) => {
-                //             rl.add_history_entry(line.as_str());
-                //             println!("Line: {}", line);
-                //         }
-                //         Err(ReadlineError::Interrupted) => {
-                //             println!("CTRL-C");
-                //             break;
-                //         }
-                //         Err(ReadlineError::Eof) => {
-                //             println!("CTRL-D");
-                //             break;
-                //         }
-                //         Err(err) => {
-                //             println!("Error: {:?}", err);
-                //             break;
-                //         }
-                //     }
-                //     count += 1;
-                // }
-                rl.append_history("history.txt");
-                Ok(())
-            }
+            DCliCommand::Shell { profile } => shell::Shell::run(config, profile).await,
         }
     }
 }

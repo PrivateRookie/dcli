@@ -1,7 +1,14 @@
 {
     "cSpell.words": [
+        "Appender",
+        "Subquery",
         "VARCHAR",
+        "ctes",
         "dcli",
+        "logfile",
+        "readline",
+        "rustyline",
+        "sqlparser",
         "subcommand"
     ]
 }

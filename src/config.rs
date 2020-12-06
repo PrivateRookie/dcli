@@ -8,6 +8,7 @@ use std::{
     collections::HashMap,
     fs::File,
     io::{Read, Write},
+    path::PathBuf,
     process::Stdio,
     str::FromStr,
 };
@@ -21,6 +22,9 @@ pub struct Config {
 
 #[derive(Debug, Clone, Serialize, Deserialize, StructOpt)]
 pub struct Profile {
+    #[structopt(skip)]
+    pub name: String,
+
     /// 数据库 hostname, IPv6地址请使用带'[]'包围
     #[structopt(short = "h", long, default_value = "localhost")]
     pub host: String,
@@ -149,6 +153,22 @@ impl Profile {
             command.args(&["--database", db]);
         }
         command
+    }
+
+    pub fn load_or_create_history(&self) -> Result<PathBuf> {
+        let mut path = PathBuf::from(std::env!("HOME"));
+        path.push(".dcli");
+        path.push("history");
+        if !path.exists() {
+            std::fs::create_dir_all(&path)
+                .with_context(|| format!("无法创建 {} 的历史文件.", self.name))?
+        }
+        path.push(format!("{}_history.txt", self.name));
+        if !path.exists() {
+            std::fs::File::create(&path)
+                .with_context(|| format!("无法创建 {} 的历史文件.", self.name))?;
+        }
+        Ok(path)
     }
 }
 

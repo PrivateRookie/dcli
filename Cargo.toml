@@ -16,9 +16,10 @@ anyhow = "1.0.34"
 sqlx = { version = "0.4.1", features = ["runtime-tokio-rustls", "mysql", "all-types"] }
 tokio = { version = "0.2.23", features = ["full"] }
 serde_json = "*"
-pretty_env_logger = "*"
+log4rs = "*"
+log = "*"
 
 sqlparser = "*"
-rustyline = "*"
+rustyline = { version = "*", features = ["with-fuzzy"] }
 rustyline-derive = "*"
 colored = "2"
