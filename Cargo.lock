@@ -425,7 +425,7 @@ dependencies = [
 
 [[package]]
 name = "dcli"
-version = "0.0.1"
+version = "0.0.2-alpha.0"
 dependencies = [
  "anyhow",
  "colored",
