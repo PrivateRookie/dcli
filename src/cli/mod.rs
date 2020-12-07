@@ -3,8 +3,13 @@ use crate::{
     mysql::connect,
 };
 use anyhow::{anyhow, Context, Result};
+use bigdecimal::BigDecimal;
+use chrono::{DateTime, Utc};
 use comfy_table::*;
-use sqlx::{mysql::MySqlRow, Column, Row, TypeInfo, Value, ValueRef};
+// use rust_decimal::Decimal;
+use sqlx::{
+    mysql::MySqlRow, types::time::Date, types::time::Time, Column, Row, TypeInfo, Value, ValueRef,
+};
 use structopt::StructOpt;
 
 pub mod shell;
@@ -214,25 +219,46 @@ impl QueryOutput {
                 let val_ref = row.try_get_raw(col.ordinal()).unwrap();
                 let val = ValueRef::to_owned(&val_ref);
                 let val = if val.is_null() {
-                    String::new()
+                    Ok(String::new())
                 } else {
                     let ty_info = col.type_info();
+                    // ref: https://github.com/launchbadge/sqlx/blob/7a707179448a1787f106138f4821ab3fa062db2a/sqlx-core/src/mysql/protocol/text/column.rs#L172
                     match ty_info.name() {
-                        "DECIMAL" | "FLOAT" | "DOUBLE" | "TIMESTAMP" | "NEWDECIMAL" => {
-                            val.try_decode::<f64>().unwrap().to_string()
+                        "BOOLEAN" => val.try_decode::<bool>().map(|v| v.to_string()),
+                        "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "INT UNSIGNED"
+                        | "MEDIUMINT UNSIGNED" | "BIGINT UNSIGNED" => {
+                            val.try_decode::<u64>().map(|v| v.to_string())
                         }
-                        "TINY" => val.try_decode::<bool>().unwrap().to_string(),
-                        "SHORT" | "LONG" | "LONGLONG" | "INT24" => {
-                            val.try_decode::<i64>().unwrap().to_string()
+                        "TINYINT" | "SMALLINT" | "INT" | "MEDIUMINT" | "BIGINT" => {
+                            val.try_decode::<i64>().map(|v| v.to_string())
                         }
-                        "TINYBLOB" | "MEDIUMBLOB" | "LONGBLOB" | "BLOB" => "BLOB".to_string(),
-                        t @ _ if t.contains("UNSIGNED") => {
-                            val.try_decode::<u64>().unwrap().to_string()
+                        "FLOAT" => val.try_decode::<f32>().map(|v| v.to_string()),
+                        "DOUBLE" => val.try_decode::<f64>().map(|v| v.to_string()),
+                        "NULL" => Ok("NULL".to_string()),
+                        "DATE" => val.try_decode::<Date>().map(|v| v.to_string()),
+                        "TIME" => val.try_decode::<Time>().map(|v| v.to_string()),
+                        "YEAR" => val.try_decode::<u64>().map(|v| v.to_string()),
+                        // TODO add tz config
+                        "TIMESTAMP" | "DATETIME" => {
+                            val.try_decode::<DateTime<Utc>>().map(|v| v.to_string())
                         }
-                        _ => val.try_decode::<String>().unwrap(),
+                        "BIT" | "ENUM" | "SET" => val.try_decode::<String>(),
+                        "DECIMAL" => val.try_decode::<BigDecimal>().map(|v| v.to_string()),
+                        "GEOMETRY" | "JSON" => val.try_decode::<String>(),
+                        "BINARY" => Ok("BINARY".to_string()),
+                        "VARBINARY" => Ok("VARBINARY".to_string()),
+                        "CHAR" | "VARCHAR" | "TINYTEXT" | "TEXT" | "MEDIUMTEXT" | "LONGTEXT" => {
+                            val.try_decode::<String>()
+                        }
+                        "TINYBLOB" => Ok("TINYBLOB".to_string()),
+                        "BLOB" => Ok("BLOB".to_string()),
+                        "MEDIUMBLOB" => Ok("MEDIUMBLOB".to_string()),
+                        "LONGBLOB" => Ok("LONGBLOB".to_string()),
+
+                        t @ _ => unreachable!(t),
                     }
                 };
-                val
+                val.unwrap()
             }));
         });
         table

@@ -428,10 +428,13 @@ name = "dcli"
 version = "0.0.2-alpha.0"
 dependencies = [
  "anyhow",
+ "bigdecimal",
+ "chrono",
  "colored",
  "comfy-table",
  "log",
  "log4rs",
+ "rust_decimal",
  "rustyline",
  "rustyline-derive",
  "serde",

@@ -202,4 +202,3 @@ impl Schema for MonoKaiSchema {
         }
     }
 }
-

@@ -16,7 +16,10 @@ toml = "0.5.7"
 shellexpand = "2.0.0"
 comfy-table = "1.4.2"
 anyhow = "1.0.34"
-sqlx = { version = "0.4.1", features = ["runtime-tokio-rustls", "mysql", "all-types"] }
+sqlx = { version = "0.4.1", features = ["runtime-tokio-rustls", "mysql", "all-types", "bigdecimal"] }
+chrono = "0.4.19"
+rust_decimal = "1.8.1"
+bigdecimal = "0.2.0"
 tokio = { version = "0.2.23", features = ["full"] }
 serde_json = "1.0.60"
 log4rs = "1.0.0-alpha-2"
