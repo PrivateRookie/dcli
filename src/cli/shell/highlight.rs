@@ -1,260 +1,37 @@
 use colored::*;
-use sqlparser::ast::{
-    Cte, Expr, Ident, Join, Query, Select, SelectItem, SetExpr, SetOperator, Statement, TableAlias,
-    TableFactor, TableWithJoins, Values,
+use sqlparser::{
+    dialect::keywords::Keyword,
+    tokenizer::{Token, Word},
 };
 
 pub trait SQLHighLight {
     fn render<S: Schema + Copy>(&self, schema: &S) -> String;
 }
 
-impl SQLHighLight for Query {
-    fn render<S: Schema + Copy>(&self, schema: &S) -> String {
-        let mut rendered = String::new();
-        if !self.ctes.is_empty() {
-            rendered.push_str(&format!("WITH {}", comma_separated(&self.ctes, schema)))
-        }
-        rendered.push_str(&format!("{}", self.body.render(schema)));
-        rendered
-    }
-}
-
-impl SQLHighLight for SetExpr {
+impl SQLHighLight for Token {
     fn render<S: Schema + Copy>(&self, schema: &S) -> String {
         match self {
-            SetExpr::Select(s) => s.render(schema),
-            SetExpr::Query(q) => q.render(schema),
-            SetExpr::SetOperation {
-                op,
-                all,
-                left,
-                right,
-            } => {
-                let all_str = if *all { " ALL" } else { "" };
-                format!(
-                    "{} {}{} {}",
-                    left.render(schema),
-                    op.render(schema),
-                    all_str,
-                    right.render(schema)
-                )
+            Token::EOF => "EOF".color(S::red()).to_string(),
+            Token::Word(w) => w.render(schema),
+            Token::Number(n) => n.color(S::green()).to_string(),
+            Token::Char(c) => c.to_string(),
+            Token::SingleQuotedString(s) => {
+                format!("'{}'", s.color(S::bright_yellow()).to_string())
             }
-            SetExpr::Values(v) => v.render(schema),
-        }
-    }
-}
-
-impl SQLHighLight for SetOperator {
-    fn render<S: Schema + Copy>(&self, _schema: &S) -> String {
-        format!("{}", self.to_string().color(S::green()))
-    }
-}
-
-impl SQLHighLight for Values {
-    fn render<S: Schema + Copy>(&self, _schema: &S) -> String {
-        self.to_string()
-    }
-}
-
-impl SQLHighLight for Select {
-    fn render<S: Schema + Copy>(&self, schema: &S) -> String {
-        let mut rendered = "SELECT".color(S::red()).to_string();
-        if self.distinct {
-            rendered.push_str(&" DISTINCT".color(S::cyan()));
-        }
-        if let Some(ref top) = self.top {
-            rendered.push_str(&format!(" {}", top));
-        }
-        rendered.push_str(&format!(" {}", comma_separated(&self.projection, schema)));
-        if !self.from.is_empty() {
-            rendered.push_str(&format!(
-                "{} {}",
-                " FROM".color(S::red()),
-                comma_separated(&self.from, schema)
-            ))
-        }
-        if let Some(ref selection) = self.selection {
-            rendered.push_str(&format!(
-                " {} {}",
-                "WHERE".color(S::red()),
-                selection.render(schema)
-            ))
-        }
-        if !self.group_by.is_empty() {
-            rendered.push_str(&format!(
-                " {} {}",
-                "GROUP BY".color(S::red()),
-                comma_separated(&self.group_by, schema)
-            ))
-        }
-        if let Some(ref having) = self.having {
-            rendered.push_str(&format!(" {} {}", "HAVING".color(S::red()), having))
-        }
-        rendered
-    }
-}
-
-impl SQLHighLight for TableWithJoins {
-    fn render<S: Schema + Copy>(&self, schema: &S) -> String {
-        format!(
-            "{}{}",
-            self.relation.render(schema),
-            self.joins
-                .iter()
-                .map(|j| j.render(schema))
-                .collect::<Vec<String>>()
-                .join("")
-        )
-    }
-}
-
-impl SQLHighLight for TableFactor {
-    fn render<S: Schema + Copy>(&self, schema: &S) -> String {
-        match self {
-            TableFactor::Table {
-                name,
-                alias,
-                args,
-                with_hints,
-            } => {
-                let mut rendered = format!("{}", name);
-                if !args.is_empty() {
-                    rendered.push_str(&format!("({})", comma_separated(args, schema)))
-                }
-                if let Some(alias) = alias {
-                    rendered.push_str(&format!(" AS {}", alias.render(schema)));
-                }
-                if !with_hints.is_empty() {
-                    rendered.push_str(&format!(" WITH ({})", comma_separated(with_hints, schema)))
-                }
-                rendered
+            Token::NationalStringLiteral(s) => {
+                format!("N'{}'", s.color(S::bright_yellow()).to_string())
             }
-            TableFactor::Derived {
-                lateral,
-                subquery,
-                alias,
-            } => {
-                let mut rendered = String::new();
-                if *lateral {
-                    rendered.push_str(&"LATERAL ".color(S::bright_purple()))
-                }
-                rendered.push_str(&format!("({})", subquery.render(schema)));
-                if let Some(alias) = alias {
-                    rendered.push_str(&format!(" AS {}", alias.render(schema)))
-                }
-                rendered
-            }
-            TableFactor::NestedJoin(table_ref) => {
-                format!("({})", table_ref.render(schema))
-            }
-        }
-    }
-}
-
-impl SQLHighLight for Join {
-    fn render<S: Schema + Copy>(&self, _schema: &S) -> String {
-        //TODO add high light
-        self.to_string()
-    }
-}
-
-impl SQLHighLight for SelectItem {
-    fn render<S: Schema + Copy>(&self, schema: &S) -> String {
-        match &self {
-            SelectItem::UnnamedExpr(expr) => expr.render(schema),
-            SelectItem::ExprWithAlias { expr, alias } => format!(
-                "{} {} {}",
-                expr.render(schema),
-                "AS".color(S::red()),
-                alias.render(schema)
-            ),
-            SelectItem::QualifiedWildcard(prefix) => {
-                // TODO add highlight
-                format!("{}.*", prefix.to_string())
-            }
-            SelectItem::Wildcard => "*".to_string(),
-        }
-    }
-}
-
-impl SQLHighLight for Expr {
-    fn render<S: Schema + Copy>(&self, schema: &S) -> String {
-        match self {
-            Expr::Identifier(s) => s.render(schema),
-            Expr::Wildcard => "*".to_string(),
-            Expr::QualifiedWildcard(q) => comma_separated(&q, schema),
-            Expr::CompoundIdentifier(s) => comma_separated(&s, schema),
-            Expr::IsNull(ast) => format!("{} IS NULL", ast.render(schema)),
-            Expr::IsNotNull(ast) => format!("{} IS NOT NULL", ast.render(schema)),
-            Expr::InList {
-                expr,
-                list,
-                negated,
-            } => format!(
-                "{} {}IN ({})",
-                expr.render(schema),
-                if *negated {
-                    "NOT ".color(S::red()).to_string()
-                } else {
-                    "".to_string()
-                },
-                comma_separated(&list, schema)
-            ),
-            Expr::InSubquery {
-                expr,
-                subquery,
-                negated,
-            } => format!(
-                "{} {}IN ({})",
-                expr.render(schema),
-                if *negated {
-                    "NOT ".color(S::red()).to_string()
-                } else {
-                    "".to_string()
-                },
-                subquery.render(schema)
-            ),
-            // TODO add highlight
+            Token::HexStringLiteral(s) => format!("X'{}'", s.color(S::bright_yellow()).to_string()),
             _ => self.to_string(),
         }
     }
 }
 
-impl SQLHighLight for Cte {
-    fn render<S: Schema + Copy>(&self, schema: &S) -> String {
-        format!(
-            "{} AS ({})",
-            self.alias.render(schema),
-            self.query.render(schema)
-        )
-    }
-}
-
-impl SQLHighLight for TableAlias {
-    fn render<S: Schema + Copy>(&self, schema: &S) -> String {
-        if self.columns.is_empty() {
-            format!("{}", self.name.render(schema))
-        } else {
-            let columns: Vec<String> = self.columns.iter().map(|col| col.render(schema)).collect();
-            format!("{} ({})", self.name.render(schema), columns.join(", "))
-        }
-    }
-}
-
-impl SQLHighLight for Ident {
-    fn render<S: Schema>(&self, _: &S) -> String {
-        format!("{}", self.to_string().color(S::red()))
-    }
-}
-
-impl SQLHighLight for Statement {
-    fn render<S: Schema + Copy>(&self, schema: &S) -> String {
-        match self {
-            Statement::Query(q) => q.render(schema),
-            Statement::ShowVariable { variable } => {
-                format!("{} {}", "SHOW".color(S::cyan()), variable)
-            }
-            _ => self.to_string(),
+impl SQLHighLight for Word {
+    fn render<S: Schema + Copy>(&self, _schema: &S) -> String {
+        match self.keyword {
+            Keyword::NoKeyword => self.to_string().color(S::blue()).to_string(),
+            _ => self.value.color(S::green()).to_string(),
         }
     }
 }

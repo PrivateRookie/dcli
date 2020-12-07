@@ -9,6 +9,7 @@
         "readline",
         "rustyline",
         "sqlparser",
+        "sqlx",
         "subcommand"
     ]
 }

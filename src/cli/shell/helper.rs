@@ -8,7 +8,7 @@ use std::{
 
 use crate::mysql::{all_columns, all_databases, all_tables};
 
-use super::highlight::{MonoKaiSchema, SQLHighLight};
+use super::highlight::{MonoKaiSchema, SQLHighLight, Schema};
 use rustyline::completion::{Completer, Pair};
 use rustyline::config::OutputStreamType;
 use rustyline::error::ReadlineError;
@@ -28,34 +28,18 @@ pub struct MyHelper {
 }
 
 #[derive(Debug)]
-pub struct DataBaseHinter {
-    pub databases: HashSet<String>,
-    pub tables: HashSet<String>,
-    pub columns: HashMap<String, HashSet<String>>,
-}
-
-impl Hinter for DataBaseHinter {
-    type Hint = String;
-
-    fn hint(&self, line: &str, pos: usize, ctx: &Context<'_>) -> Option<Self::Hint> {
-        let _ = (line, pos, ctx);
-        None
-    }
-}
-
-#[derive(Debug)]
 pub struct DBHighlighter {}
 
 impl Highlighter for DBHighlighter {
     fn highlight<'l>(&self, line: &'l str, _pos: usize) -> Cow<'l, str> {
         let dialect = MySqlDialect {};
         let schema = MonoKaiSchema {};
-        let rendered: String = match sqlparser::parser::Parser::parse_sql(&dialect, line) {
-            Ok(ast) => ast
+        let rendered = match sqlparser::tokenizer::Tokenizer::new(&dialect, line).tokenize() {
+            Ok(tokens) => tokens
                 .iter()
-                .map(|stat| stat.render(&schema))
+                .map(|t| t.render(&schema))
                 .collect::<Vec<String>>()
-                .join("\n"),
+                .join(""),
             Err(_) => line.to_string(),
         };
         Owned(rendered)
@@ -98,12 +82,25 @@ impl Completer for MyHelper {
         pos: usize,
         _ctx: &Context<'_>,
     ) -> Result<(usize, Vec<Self::Candidate>), ReadlineError> {
-        let pattern = line[..pos].split_ascii_whitespace().last().unwrap();
+        let pattern = line[..pos]
+            .split_ascii_whitespace()
+            .last()
+            .unwrap_or(&line[..pos]);
         let mut pairs: Vec<Pair> = vec![];
+
+        for kw in crate::mysql::KEYWORDS.iter() {
+            if kw.starts_with(&pattern.to_ascii_uppercase()) {
+                pairs.push(Pair {
+                    display: format!("{} {}", "[KEY]".color(MonoKaiSchema::red()), kw),
+                    replacement: kw.to_string(),
+                })
+            }
+        }
+
         for db in self.databases.iter() {
             if db.contains(pattern) {
                 pairs.push(Pair {
-                    display: format!("{} {}", "[DB]".red(), db),
+                    display: format!("{} {}", "[DB]".color(MonoKaiSchema::cyan()), db),
                     replacement: db.to_string(),
                 })
             }
@@ -112,7 +109,7 @@ impl Completer for MyHelper {
         for tab in self.tables.iter() {
             if tab.contains(pattern) {
                 pairs.push(Pair {
-                    display: format!("{} {}", "[TABLE]".green(), tab),
+                    display: format!("{} {}", "[TABLE]".color(MonoKaiSchema::purple()), tab),
                     replacement: tab.to_string(),
                 })
             }
@@ -122,7 +119,12 @@ impl Completer for MyHelper {
             for col in cols.iter() {
                 if col.contains(pattern) {
                     pairs.push(Pair {
-                        display: format!("{} {}.{}", "[COL]".blue(), tab, col),
+                        display: format!(
+                            "{} {}.{}",
+                            "[COL]".color(MonoKaiSchema::blue()),
+                            tab,
+                            col
+                        ),
                         replacement: col.to_string(),
                     })
                 }
@@ -175,7 +177,7 @@ impl Validator for MyHelper {
     ) -> rustyline::Result<validate::ValidationResult> {
         let input = ctx.input();
         if !input.starts_with("%") {
-            if input.ends_with(";") {
+            if input.chars().all(|c| c.is_whitespace()) || input.ends_with(";") {
                 Ok(validate::ValidationResult::Valid(None))
             } else {
                 Ok(validate::ValidationResult::Incomplete)
