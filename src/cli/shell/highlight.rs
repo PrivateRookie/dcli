@@ -203,7 +203,3 @@ impl Schema for MonoKaiSchema {
     }
 }
 
-fn comma_separated<H: SQLHighLight, S: Schema + Copy>(values: &Vec<H>, schema: &S) -> String {
-    let rendered: Vec<String> = values.iter().map(|val| val.render(schema)).collect();
-    format!("{}", rendered.join(", "))
-}

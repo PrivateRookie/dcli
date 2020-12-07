@@ -217,10 +217,19 @@ impl QueryOutput {
                     String::new()
                 } else {
                     let ty_info = col.type_info();
-                    if ty_info.name() == "TEXT" || ty_info.name() == "VARCHAR" {
-                        val.decode::<String>()
-                    } else {
-                        val.decode::<i64>().to_string()
+                    match ty_info.name() {
+                        "DECIMAL" | "FLOAT" | "DOUBLE" | "TIMESTAMP" | "NEWDECIMAL" => {
+                            val.try_decode::<f64>().unwrap().to_string()
+                        }
+                        "TINY" => val.try_decode::<bool>().unwrap().to_string(),
+                        "SHORT" | "LONG" | "LONGLONG" | "INT24" => {
+                            val.try_decode::<i64>().unwrap().to_string()
+                        }
+                        "TINYBLOB" | "MEDIUMBLOB" | "LONGBLOB" | "BLOB" => "BLOB".to_string(),
+                        t @ _ if t.contains("UNSIGNED") => {
+                            val.try_decode::<u64>().unwrap().to_string()
+                        }
+                        _ => val.try_decode::<String>().unwrap(),
                     }
                 };
                 val

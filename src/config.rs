@@ -25,7 +25,7 @@ pub struct Profile {
     #[structopt(skip)]
     pub name: String,
 
-    /// 数据库 hostname, IPv6地址请使用带'[]'包围
+    /// 数据库 hostname, IPv6地址请使用'[]'包围
     #[structopt(short = "h", long, default_value = "localhost")]
     pub host: String,
 
