@@ -156,12 +156,11 @@ impl Profile {
     }
 
     pub fn load_or_create_history(&self) -> Result<PathBuf> {
-        let mut path = PathBuf::from(std::env!("HOME"));
+        let mut path = PathBuf::from(std::env::var("HOME").with_context(|| "未设置 $HOME 变量")?);
         path.push(".dcli");
         path.push("history");
         if !path.exists() {
-            std::fs::create_dir_all(&path)
-                .with_context(|| format!("无法创建 {} 的历史文件.", self.name))?
+            std::fs::create_dir_all(&path).with_context(|| format!("无法创建历史文件夹."))?
         }
         path.push(format!("{}_history.txt", self.name));
         if !path.exists() {
