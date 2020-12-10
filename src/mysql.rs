@@ -414,11 +414,7 @@ pub async fn connect(profile: &Profile) -> Result<MySqlConnection> {
     } else {
         conn
     };
-    let conn = if let Some(ref db) = profile.db {
-        conn.database(db)
-    } else {
-        conn
-    };
+    let conn = conn.database(&profile.db);
     let conn = if let Some(ref ssl_mode) = profile.ssl_mode {
         let mode = match ssl_mode {
             crate::config::SslMode::Disabled => MySqlSslMode::Disabled,

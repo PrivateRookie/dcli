@@ -34,8 +34,7 @@ pub struct Profile {
     pub port: u16,
 
     /// 数据库名称
-    #[structopt(short, long)]
-    pub db: Option<String>,
+    pub db: String,
 
     /// 用户名
     #[structopt(short, long)]
@@ -128,9 +127,7 @@ impl Profile {
         } else {
             uri.push_str(&format!("@{}:{}", self.host, self.port));
         }
-        if let Some(db) = &self.db {
-            uri.push_str(&format!("/{}", db));
-        }
+        uri.push_str(&format!("/{}", self.db));
         uri
     }
 
@@ -149,9 +146,7 @@ impl Profile {
             command.arg(&format!("--password={}", pass));
         }
         command.args(&["--host", &self.host, "--port", &self.port.to_string()]);
-        if let Some(db) = &self.db {
-            command.args(&["--database", db]);
-        }
+        command.args(&["--database", &self.db]);
         command
     }
 
@@ -202,7 +197,6 @@ impl Config {
     pub fn save(&self) -> Result<()> {
         let path = Self::config_path()?;
         let mut file = File::create(path).with_context(|| "无法打开配置文件")?;
-        // NOTE toml 系列化问题
         let tmp_value = toml::Value::try_from(self).unwrap();
         let config_str = toml::to_string_pretty(&tmp_value).unwrap();
         file.write_all(config_str.as_bytes())
@@ -238,5 +232,11 @@ impl Config {
                 name, table
             )))
         }
+    }
+
+    pub fn try_set_profile(&mut self, name: &str, new_profile: Profile) -> Result<()> {
+        self.try_get_profile(name)?;
+        self.profiles.insert(name.to_string(), new_profile);
+        Ok(())
     }
 }

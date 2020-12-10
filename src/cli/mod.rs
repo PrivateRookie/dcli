@@ -1,5 +1,5 @@
 use crate::{
-    config::{Config, Profile, TableStyle},
+    config::{Config, Profile, SslMode, TableStyle},
     mysql::connect,
 };
 use anyhow::{anyhow, Context, Result};
@@ -17,6 +17,11 @@ pub mod shell;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "dcli", about = "数据连接工具.")]
 pub enum DCliCommand {
+    /// 配置相关命令 profile 命令别名
+    P {
+        #[structopt(subcommand)]
+        cmd: ProfileCmd,
+    },
     /// 配置相关命令
     Profile {
         #[structopt(subcommand)]
@@ -71,6 +76,39 @@ pub enum ProfileCmd {
         /// 配置名
         profile: String,
     },
+    /// 修改已有配置
+    Set {
+        /// 配置名称
+        name: String,
+
+        /// 数据库 hostname, IPv6地址请使用'[]'包围
+        #[structopt(short = "h", long)]
+        host: Option<String>,
+
+        /// 数据库 port 0 ~ 65536
+        #[structopt(short = "P", long)]
+        port: Option<u16>,
+
+        /// 数据库名称
+        #[structopt(short, long)]
+        db: Option<String>,
+
+        /// 用户名
+        #[structopt(short, long)]
+        user: Option<String>,
+
+        /// 密码
+        #[structopt(short = "pass", long)]
+        password: Option<String>,
+
+        /// SSL 模式
+        #[structopt(long)]
+        ssl_mode: Option<SslMode>,
+
+        /// SSL CA 文件路径
+        #[structopt(long, parse(from_os_str))]
+        ssl_ca: Option<std::path::PathBuf>,
+    },
 }
 
 #[derive(Debug, StructOpt)]
@@ -111,7 +149,7 @@ impl DCliCommand {
                 println!("{}", output.to_print_table(&config));
                 Ok(())
             }
-            DCliCommand::Profile { cmd } => {
+            DCliCommand::Profile { cmd } | DCliCommand::P { cmd } => {
                 match cmd {
                     ProfileCmd::List => {
                         let mut table = config.new_table();
@@ -122,7 +160,7 @@ impl DCliCommand {
                                 &profile.user.clone().unwrap_or_default(),
                                 &profile.host,
                                 &profile.port.to_string(),
-                                &profile.db.clone().unwrap_or_default(),
+                                &profile.db.clone(),
                                 &profile.uri(),
                             ]);
                         }
@@ -154,42 +192,48 @@ impl DCliCommand {
                             println!("配置已删除.");
                         }
                     }
+                    ProfileCmd::Set {
+                        name,
+                        host,
+                        port,
+                        db,
+                        user,
+                        password,
+                        ssl_mode,
+                        ssl_ca,
+                    } => {
+                        let mut profile = config.try_get_profile(name)?.clone();
+                        if let Some(host) = host {
+                            profile.host = host.to_string();
+                        }
+                        if let Some(port) = port {
+                            profile.port = port.clone();
+                        }
+                        if let Some(db) = db {
+                            profile.db = db.clone()
+                        }
+                        if user.is_some() {
+                            profile.user = user.clone()
+                        }
+                        if password.is_some() {
+                            profile.password = password.clone()
+                        }
+                        if ssl_mode.is_some() {
+                            profile.ssl_mode = ssl_mode.clone()
+                        }
+                        if ssl_ca.is_some() {
+                            profile.ssl_ca = ssl_ca.clone()
+                        }
+                        config.try_set_profile(name, profile)?;
+                        config.save()?;
+                        println!("{} 配置已更新", name);
+                    }
                 }
                 Ok(())
             }
             DCliCommand::Shell { profile } => shell::Shell::run(config, profile).await,
         }
     }
-}
-
-#[derive(Debug, StructOpt)]
-pub struct AddProfile {
-    /// 配置名称
-    pub name: String,
-
-    /// 数据库 hostname, IPv6请使用带'[]'包围的域名
-    #[structopt(short = "h", long, default_value = "localhost")]
-    pub host: String,
-
-    /// 数据库 port 0 ~ 65536
-    #[structopt(default_value = "3306", long)]
-    pub port: u16,
-
-    /// 数据库名称
-    #[structopt(short, long)]
-    pub db: Option<String>,
-
-    /// 用户名
-    #[structopt(short, long)]
-    pub user: Option<String>,
-
-    /// 密码
-    #[structopt(short = "pass", long)]
-    pub password: Option<String>,
-
-    /// 是否强制覆盖
-    #[structopt(short, long)]
-    pub force: bool,
 }
 
 pub struct QueryOutput {
