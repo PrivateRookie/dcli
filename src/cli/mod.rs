@@ -142,7 +142,7 @@ impl DCliCommand {
             }
             DCliCommand::Exec { profile, command } => {
                 let profile = config.try_get_profile(profile)?;
-                let mut conn = connect(&profile).await?;
+                let pool = connect(&profile).await?;
                 let to_execute = if command.len() == 1 && command.first().unwrap().starts_with('@')
                 {
                     read_file(&command.first().unwrap()[1..])?
@@ -151,11 +151,13 @@ impl DCliCommand {
                 };
                 for sql in to_execute.split(";") {
                     if !sql.is_empty() {
-                        let output: QueryOutput =
-                            sqlx::query(sql).fetch_all(&mut conn).await?.into();
+                        let output: QueryOutput = sqlx::query(sql).fetch_all(&pool).await?.into();
                         println!("{}", output.to_print_table(&config));
                     }
                 }
+                println!("{}", pool.num_idle());
+                pool.close().await;
+                println!("{}", pool.num_idle());
                 Ok(())
             }
             DCliCommand::Profile { cmd } | DCliCommand::P { cmd } => {

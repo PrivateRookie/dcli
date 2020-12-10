@@ -2,8 +2,10 @@ use std::collections::{HashMap, HashSet};
 
 use crate::config::Profile;
 use anyhow::{Context, Result};
-use sqlx::{mysql::MySqlConnectOptions, MySqlConnection};
-use sqlx::{mysql::MySqlSslMode, prelude::*};
+use sqlx::{
+    mysql::{MySqlConnectOptions, MySqlSslMode},
+    MySqlPool,
+};
 
 pub const KEYWORDS: [&'static str; 389] = [
     "ABS",
@@ -399,7 +401,7 @@ pub const KEYWORDS: [&'static str; 389] = [
 
 const SCHEMA_TABLE: &'static str = "information_schema";
 
-pub async fn connect(profile: &Profile) -> Result<MySqlConnection> {
+pub async fn connect(profile: &Profile) -> Result<MySqlPool> {
     let conn = MySqlConnectOptions::new()
         .host(&profile.host)
         .port(profile.port)
@@ -432,11 +434,13 @@ pub async fn connect(profile: &Profile) -> Result<MySqlConnection> {
     } else {
         conn
     };
-    Ok(conn.connect().await.with_context(|| "连接失败...")?)
+    Ok(MySqlPool::connect_with(conn)
+        .await
+        .with_context(|| "连接失败...")?)
 }
 
-pub async fn all_databases(conn: &mut MySqlConnection) -> Result<HashSet<String>> {
-    let query: Vec<(String,)> = sqlx::query_as("SHOW DATABASES").fetch_all(conn).await?;
+pub async fn all_databases(pool: &MySqlPool) -> Result<HashSet<String>> {
+    let query: Vec<(String,)> = sqlx::query_as("SHOW DATABASES").fetch_all(pool).await?;
     let mut databases = HashSet::new();
     query.into_iter().for_each(|(db,)| {
         databases.insert(db);
@@ -444,8 +448,8 @@ pub async fn all_databases(conn: &mut MySqlConnection) -> Result<HashSet<String>
     Ok(databases)
 }
 
-pub async fn all_tables(conn: &mut MySqlConnection) -> Result<HashSet<String>> {
-    let query: Vec<(String,)> = sqlx::query_as("SHOW TABLES").fetch_all(conn).await?;
+pub async fn all_tables(pool: &MySqlPool) -> Result<HashSet<String>> {
+    let query: Vec<(String,)> = sqlx::query_as("SHOW TABLES").fetch_all(pool).await?;
     let mut tables = HashSet::new();
     query.into_iter().for_each(|(t,)| {
         tables.insert(t);
@@ -454,7 +458,7 @@ pub async fn all_tables(conn: &mut MySqlConnection) -> Result<HashSet<String>> {
 }
 
 pub async fn all_columns(
-    conn: &mut MySqlConnection,
+    pool: &MySqlPool,
     tables: &HashSet<String>,
 ) -> Result<HashMap<String, HashSet<String>>> {
     let mut columns: HashMap<String, HashSet<String>> = HashMap::new();
@@ -467,7 +471,7 @@ pub async fn all_columns(
             .collect::<Vec<String>>()
             .join(",")
     );
-    let query: Vec<(String, String)> = sqlx::query_as(&sql).fetch_all(conn).await?;
+    let query: Vec<(String, String)> = sqlx::query_as(&sql).fetch_all(pool).await?;
     query.into_iter().for_each(|(table, col)| {
         if let Some(table) = columns.get_mut(&table) {
             table.insert(col);

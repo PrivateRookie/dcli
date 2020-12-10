@@ -32,8 +32,8 @@ impl Shell {
     pub async fn run(config: &mut Config, profile: &str) -> anyhow::Result<()> {
         let profile = config.try_get_profile(profile)?;
         let history = profile.load_or_create_history()?;
-        let mut conn = crate::mysql::connect(&profile).await?;
-        let mut rl = helper::get_editor(&mut conn).await?;
+        let mut pool = crate::mysql::connect(&profile).await?;
+        let mut rl = helper::get_editor(&mut pool).await?;
         let mut count: usize = 1;
         rl.load_history(&history)
             .with_context(|| "无法载入历史文件.")?;
@@ -68,7 +68,7 @@ impl Shell {
                                                 for sql in content.split(";") {
                                                     if !sql.is_empty() {
                                                         let output: QueryOutput = sqlx::query(sql)
-                                                            .fetch_all(&mut conn)
+                                                            .fetch_all(&pool)
                                                             .await?
                                                             .into();
                                                         println!(
@@ -85,7 +85,7 @@ impl Shell {
                                     }
                                     rl.add_history_entry(line.as_str());
                                 } else {
-                                    match sqlx::query(&line).fetch_all(&mut conn).await {
+                                    match sqlx::query(&line).fetch_all(&pool).await {
                                         Ok(resp) => {
                                             let output: QueryOutput = resp.into();
                                             println!("{}", output.to_print_table(config));
@@ -115,6 +115,7 @@ impl Shell {
             }
             count += 1;
         }
+        pool.close().await;
         rl.append_history(&history).unwrap();
         Ok(())
     }

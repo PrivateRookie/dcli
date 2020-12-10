@@ -1,6 +1,6 @@
 use colored::*;
 use sqlparser::dialect::MySqlDialect;
-use sqlx::MySqlConnection;
+use sqlx::MySqlPool;
 use std::{
     borrow::Cow::{self, Borrowed, Owned},
     collections::{HashMap, HashSet},
@@ -188,7 +188,7 @@ impl Validator for MyHelper {
     }
 }
 
-pub async fn get_editor(mut conn: &mut MySqlConnection) -> anyhow::Result<Editor<MyHelper>> {
+pub async fn get_editor(mut conn: &mut MySqlPool) -> anyhow::Result<Editor<MyHelper>> {
     let databases = all_databases(&mut conn).await?;
     let tables = all_tables(&mut conn).await?;
     let columns = all_columns(&mut conn, &tables).await?;
