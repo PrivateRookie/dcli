@@ -12,6 +12,7 @@ use structopt::StructOpt;
 pub mod cli;
 pub mod config;
 pub mod mysql;
+pub mod utils;
 
 #[tokio::main]
 async fn main() -> Result<()> {

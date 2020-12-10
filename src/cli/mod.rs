@@ -1,6 +1,7 @@
 use crate::{
     config::{Config, Profile, SslMode, TableStyle},
     mysql::connect,
+    utils::read_file,
 };
 use anyhow::{anyhow, Context, Result};
 use bigdecimal::BigDecimal;
@@ -43,7 +44,7 @@ pub enum DCliCommand {
         #[structopt(short, long)]
         profile: String,
 
-        /// 命令
+        /// 命令 使用 @<文件路径> 读取 SQL 文件内容作为输入
         command: Vec<String>,
     },
 
@@ -142,11 +143,19 @@ impl DCliCommand {
             DCliCommand::Exec { profile, command } => {
                 let profile = config.try_get_profile(profile)?;
                 let mut conn = connect(&profile).await?;
-                let output: QueryOutput = sqlx::query(&command.join(" "))
-                    .fetch_all(&mut conn)
-                    .await?
-                    .into();
-                println!("{}", output.to_print_table(&config));
+                let to_execute = if command.len() == 1 && command.first().unwrap().starts_with('@')
+                {
+                    read_file(&command.first().unwrap()[1..])?
+                } else {
+                    command.join(" ")
+                };
+                for sql in to_execute.split(";") {
+                    if !sql.is_empty() {
+                        let output: QueryOutput =
+                            sqlx::query(sql).fetch_all(&mut conn).await?.into();
+                        println!("{}", output.to_print_table(&config));
+                    }
+                }
                 Ok(())
             }
             DCliCommand::Profile { cmd } | DCliCommand::P { cmd } => {

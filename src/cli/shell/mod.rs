@@ -1,5 +1,5 @@
 use super::QueryOutput;
-use crate::config::Config;
+use crate::{config::Config, utils::read_file};
 use anyhow::Context;
 use colored::*;
 use highlight::{MonoKaiSchema, Schema};
@@ -21,6 +21,11 @@ pub enum BuiltIn {
     Help,
     #[structopt(name = "%his", about = "查看历史")]
     His,
+    #[structopt(name = "%run", about = "运行 SQL 文件")]
+    Run {
+        /// 文件路径
+        path: String,
+    },
 }
 
 impl Shell {
@@ -58,7 +63,27 @@ impl Shell {
                                                 .enumerate()
                                                 .for_each(|(i, h)| println!("{} {}", i, h));
                                         }
+                                        BuiltIn::Run { path } => match read_file(&path) {
+                                            Ok(content) => {
+                                                for sql in content.split(";") {
+                                                    if !sql.is_empty() {
+                                                        let output: QueryOutput = sqlx::query(sql)
+                                                            .fetch_all(&mut conn)
+                                                            .await?
+                                                            .into();
+                                                        println!(
+                                                            "{}",
+                                                            output.to_print_table(&config)
+                                                        );
+                                                    }
+                                                }
+                                            }
+                                            Err(e) => {
+                                                println!("{:?}", e);
+                                            }
+                                        },
                                     }
+                                    rl.add_history_entry(line.as_str());
                                 } else {
                                     match sqlx::query(&line).fetch_all(&mut conn).await {
                                         Ok(resp) => {
@@ -80,15 +105,8 @@ impl Shell {
                         println!("");
                     }
                 }
-                Err(ReadlineError::Interrupted) => {
-                    drop(conn);
-                    println!("Ctrl-C");
-                    break;
-                }
-                Err(ReadlineError::Eof) => {
-                    drop(conn);
-                    println!("Ctrl-D");
-                    break;
+                Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => {
+                    println!("使用 %exit 退出.");
                 }
                 Err(err) => {
                     println!("Error: {:?}", err);
@@ -103,19 +121,16 @@ impl Shell {
 
     fn take_builtin(line: &str) -> anyhow::Result<Option<BuiltIn>> {
         if line.starts_with("%") {
-            if let Some(builtin) = line.split_ascii_whitespace().next() {
-                let builtin =
-                    BuiltIn::from_iter_safe(vec!["builtin", &builtin]).map_err(|mut e| {
+            let builtin =
+                BuiltIn::from_iter_safe(format!("builtin {}", line).split_ascii_whitespace())
+                    .map_err(|mut e| {
                         e.message = e
                             .message
                             .replace("builtin <SUBCOMMAND>", "%<cmd>")
                             .replace("builtin --", "");
                         e
                     })?;
-                Ok(Some(builtin))
-            } else {
-                Ok(None)
-            }
+            Ok(Some(builtin))
         } else {
             Ok(None)
         }
