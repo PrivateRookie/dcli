@@ -436,7 +436,7 @@ pub async fn connect(profile: &Profile) -> Result<MySqlPool> {
     };
     Ok(MySqlPool::connect_with(conn)
         .await
-        .with_context(|| "连接失败...")?)
+        .with_context(|| crate::fl!("connect-failed"))?)
 }
 
 pub async fn all_databases(pool: &MySqlPool) -> Result<HashSet<String>> {

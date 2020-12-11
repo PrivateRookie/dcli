@@ -1,4 +1,5 @@
 use super::QueryOutput;
+use crate::fl;
 use crate::{config::Config, utils::read_file};
 use anyhow::Context;
 use colored::*;
@@ -12,18 +13,32 @@ mod highlight;
 #[derive(Debug)]
 pub struct Shell;
 
+#[cfg_attr(feature = "zh-CN", doc = "DCli 内建命令")]
+#[cfg_attr(feature = "en-US", doc = "Dcli builtin commands")]
 #[derive(Debug, StructOpt)]
-#[structopt(name = "DBuiltin", about = "DCli 内建命令")]
+#[structopt(name = "DBuiltin")]
 pub enum BuiltIn {
-    #[structopt(name = "%exit", about = "退出 shell")]
+    #[cfg_attr(feature = "zh-CN", doc = "退出 shell")]
+    #[cfg_attr(feature = "en-US", doc = "exit shell")]
+    #[structopt(name = "%exit")]
     Exit,
-    #[structopt(name = "%help", about = "打印帮助信息")]
+
+    #[cfg_attr(feature = "zh-CN", doc = "打印帮助信息")]
+    #[cfg_attr(feature = "en-US", doc = "print help message")]
+    #[structopt(name = "%help")]
     Help,
-    #[structopt(name = "%his", about = "查看历史")]
+
+    #[cfg_attr(feature = "zh-CN", doc = "查看历史")]
+    #[cfg_attr(feature = "en-US", doc = "list history")]
+    #[structopt(name = "%his")]
     His,
-    #[structopt(name = "%run", about = "运行 SQL 文件")]
+
+    #[cfg_attr(feature = "zh-CN", doc = "运行 SQL 文件")]
+    #[cfg_attr(feature = "en-US", doc = "exec SQL file")]
+    #[structopt(name = "%run")]
     Run {
-        /// 文件路径
+        #[cfg_attr(feature = "zh-CN", doc = "文件路径")]
+        #[cfg_attr(feature = "en-US", doc = "path file")]
         path: String,
     },
 }
@@ -36,12 +51,12 @@ impl Shell {
         let mut rl = helper::get_editor(&mut pool).await?;
         let mut count: usize = 1;
         rl.load_history(&history)
-            .with_context(|| "无法载入历史文件.")?;
+            .with_context(|| fl!("load-his-failed"))?;
         loop {
             let p = format!("[{}]: ", count)
                 .color(MonoKaiSchema::green())
                 .to_string();
-            rl.helper_mut().with_context(|| "无 helper")?.colored_prompt = p.clone();
+            rl.helper_mut().unwrap().colored_prompt = p.clone();
             let input = rl.readline(&p);
             match input {
                 Ok(line) => {
@@ -106,7 +121,7 @@ impl Shell {
                     }
                 }
                 Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => {
-                    println!("使用 %exit 退出.");
+                    println!("{}", fl!("exit-info"));
                 }
                 Err(err) => {
                     println!("Error: {:?}", err);

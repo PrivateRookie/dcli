@@ -14,6 +14,8 @@ use std::{
 };
 use structopt::StructOpt;
 
+use crate::fl;
+
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Config {
     pub profiles: HashMap<String, Profile>,
@@ -25,30 +27,40 @@ pub struct Profile {
     #[structopt(skip)]
     pub name: String,
 
-    /// 数据库 hostname, IPv6地址请使用'[]'包围
+    #[cfg_attr(feature = "zh-CN", doc = "数据库 hostname, IPv6地址请使用'[]'包围")]
+    #[cfg_attr(
+        feature = "en-US",
+        doc = "database hostname, IPv6 should be surrounded by '[]'"
+    )]
     #[structopt(short = "h", long, default_value = "localhost")]
     pub host: String,
 
-    /// 数据库 port 0 ~ 65536
+    #[cfg_attr(feature = "zh-CN", doc = "数据库 port 1 ~ 65535")]
+    #[cfg_attr(feature = "en-US", doc = "database port 1 ~ 65535")]
     #[structopt(default_value = "3306", short = "P", long)]
     pub port: u16,
 
-    /// 数据库名称
+    #[cfg_attr(feature = "zh-CN", doc = "数据库名称")]
+    #[cfg_attr(feature = "en-US", doc = "database name")]
     pub db: String,
 
-    /// 用户名
+    #[cfg_attr(feature = "zh-CN", doc = "用户名")]
+    #[cfg_attr(feature = "en-US", doc = "user name")]
     #[structopt(short, long)]
     pub user: Option<String>,
 
-    /// 密码
+    #[cfg_attr(feature = "zh-CN", doc = "密码")]
+    #[cfg_attr(feature = "en-US", doc = "password")]
     #[structopt(short = "pass", long)]
     pub password: Option<String>,
 
-    /// SSL 模式
+    #[cfg_attr(feature = "zh-CN", doc = "SSL 模式")]
+    #[cfg_attr(feature = "en-US", doc = "SSL Mode")]
     #[structopt(long)]
     pub ssl_mode: Option<SslMode>,
 
-    /// SSL CA 文件路径
+    #[cfg_attr(feature = "zh-CN", doc = "SSL CA 文件路径")]
+    #[cfg_attr(feature = "en-US", doc = "SSL CA file path")]
     #[structopt(long, parse(from_os_str))]
     pub ssl_ca: Option<std::path::PathBuf>,
 }
@@ -78,7 +90,7 @@ impl FromStr for SslMode {
             "required" => SslMode::Required,
             "verify_ca" => SslMode::VerifyCa,
             "verify_identity" => SslMode::VerifyIdentity,
-            _ => Err(anyhow!(format!("无效值: {:?}", s)))?,
+            _ => Err(anyhow!(fl!("invalid-value", val = s)))?,
         };
         Ok(val)
     }
@@ -107,7 +119,7 @@ impl FromStr for TableStyle {
             "asciimd" => TableStyle::AsciiMd,
             "utf8full" => TableStyle::Utf8Full,
             "utf8hborderonly" => TableStyle::Utf8HBorderOnly,
-            _ => Err(anyhow!(format!("无效值: {:?}", s)))?,
+            _ => Err(anyhow!(fl!("invalid-value", val = s)))?,
         };
         Ok(val)
     }
@@ -151,16 +163,16 @@ impl Profile {
     }
 
     pub fn load_or_create_history(&self) -> Result<PathBuf> {
-        let mut path = PathBuf::from(std::env::var("HOME").with_context(|| "未设置 $HOME 变量")?);
+        let mut path = PathBuf::from(std::env::var("HOME").with_context(|| fl!("home-not-set"))?);
         path.push(".dcli");
         path.push("history");
         if !path.exists() {
-            std::fs::create_dir_all(&path).with_context(|| format!("无法创建历史文件夹."))?
+            std::fs::create_dir_all(&path).with_context(|| fl!("create-his-dir-failed"))?
         }
         path.push(format!("{}_history.txt", self.name));
         if !path.exists() {
             std::fs::File::create(&path)
-                .with_context(|| format!("无法创建 {} 的历史文件.", self.name))?;
+                .with_context(|| fl!("create-his-file-failed", name = self.name.clone()))?;
         }
         Ok(path)
     }
@@ -168,7 +180,7 @@ impl Profile {
 
 impl Config {
     pub fn config_path() -> Result<String> {
-        let home = std::env::var("HOME").with_context(|| "未设置 $HOME 环境变量")?;
+        let home = std::env::var("HOME").with_context(|| fl!("home-not-set"))?;
         let mut file = std::path::Path::new(&home).to_path_buf();
         file.push(".config");
         file.push("dcli.toml");
@@ -181,13 +193,17 @@ impl Config {
         if file.exists() {
             let mut content = String::new();
             File::open(&file)
-                .with_context(|| format!("fail to load config file {}", file.to_str().unwrap()))?
+                .with_context(|| fl!("open-config-failed", file = file.to_str().unwrap_or("")))?
                 .read_to_string(&mut content)
                 .unwrap();
-            let config: Config = toml::from_str(&content).with_context(|| "无法打开配置文件")?;
+            let config: Config =
+                toml::from_str(&content).with_context(|| fl!("ser-config-failed"))?;
             Ok(config)
         } else {
-            println!("未找到配置文件, 创建默认配置 {}", file.to_str().unwrap());
+            println!(
+                "{}",
+                fl!("create-config-file", file = file.to_str().unwrap())
+            );
             let config = Self::default();
             config.save()?;
             Ok(config)
@@ -196,11 +212,12 @@ impl Config {
 
     pub fn save(&self) -> Result<()> {
         let path = Self::config_path()?;
-        let mut file = File::create(path).with_context(|| "无法打开配置文件")?;
+        let mut file =
+            File::create(&path).with_context(|| fl!("open-config-failed", file = path))?;
         let tmp_value = toml::Value::try_from(self).unwrap();
         let config_str = toml::to_string_pretty(&tmp_value).unwrap();
         file.write_all(config_str.as_bytes())
-            .with_context(|| "无法写入配置文件")?;
+            .with_context(|| fl!("save-config-filed"))?;
         Ok(())
     }
 
@@ -227,9 +244,11 @@ impl Config {
             self.profiles.keys().into_iter().for_each(|key| {
                 table.add_row(vec![key]);
             });
-            Err(anyhow!(format!(
-                "未找到配置文件 {}, 请在以下选项中选择\n{}",
-                name, table
+            let table_str = table.to_string();
+            Err(anyhow!(fl!(
+                "profile-not-found",
+                name = name,
+                table = table_str
             )))
         }
     }

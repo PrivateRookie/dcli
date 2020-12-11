@@ -1,5 +1,13 @@
+use std::sync::Mutex;
+
 use anyhow::Result;
 use cli::DCliCommand;
+use i18n_embed::{
+    fluent::{fluent_language_loader, FluentLanguageLoader},
+    DesktopLanguageRequester,
+};
+use once_cell::sync::Lazy;
+use rust_embed::RustEmbed;
 
 use config::Config;
 // use log::LevelFilter;
@@ -9,10 +17,35 @@ use config::Config;
 // };
 use structopt::StructOpt;
 
+#[derive(RustEmbed)]
+#[folder = "i18n"]
+struct Translations;
+
 pub mod cli;
 pub mod config;
 pub mod mysql;
 pub mod utils;
+
+pub static LOADER: Lazy<Mutex<FluentLanguageLoader>> = Lazy::new(|| {
+    let translations = Translations {};
+
+    let language_loader: FluentLanguageLoader = fluent_language_loader!();
+    let requested_languages = DesktopLanguageRequester::requested_languages();
+    let _result = i18n_embed::select(&language_loader, &translations, &requested_languages);
+    language_loader.set_use_isolating(false);
+    Mutex::new(language_loader)
+});
+
+#[macro_export]
+macro_rules! fl {
+    ($message_id:literal) => {{
+        i18n_embed_fl::fl!($crate::LOADER.lock().unwrap(), $message_id)
+    }};
+
+    ($message_id:literal, $($args:expr),*) => {{
+        i18n_embed_fl::fl!($crate::LOADER.lock().unwrap(), $message_id, $($args), *)
+    }};
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {

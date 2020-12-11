@@ -15,9 +15,13 @@ dcli 是一个简单的数据库管理工具。因为个人习惯喜欢用命令
 
 ### 可调整表格样式
 
+### 支持 i18n
+
+通过条件编译和 cargo-i18n fluent 支持国际化，详情见[安装](#安装)。
+
 ### 更智能的 shell
 
-mysql-client 提供的 shell 有些简陋，dcli 正在实现一个带有语法高亮和智能补全的 shell。
+mysql-client 提供的 shell 有些简陋，dcli 实现了一个基于 token 的高亮显示和关键字，数据库名称，表名和字段名自动补全，和历史搜索 shell。
 
 ### 与 jupyter backend 交互(计划中)
 
@@ -27,8 +31,17 @@ mysql-client 提供的 shell 有些简陋，dcli 正在实现一个带有语法�
 
 从 crate.io 安装
 
+因为 clap 未能支持 i18n, 所以需要通过条件编译支持 clap 帮助信息 i18n, 而程序运行时的信息输出则是通过
+`$LANG` 自动获取。
+
+`export LANG=zh_CN.UTF-8` 可以设置为中文，`export LANG=en_US.UTF-8` 则为英文。
+
+
 ```bash
+# 默认为英文版本
 cargo install --force dcli
+# 安装中文版本
+cargo install --no-default-features --features zh-CN --force dcli
 ```
 
 debian 系可以从 github release 页面下载 dep 包, 接着使用 `dpkg` 命令安装

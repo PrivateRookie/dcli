@@ -8,6 +8,7 @@ use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use comfy_table::*;
 // use rust_decimal::Decimal;
+use crate::fl;
 use sqlx::{
     mysql::MySqlRow, types::time::Date, types::time::Time, Column, Row, TypeInfo, Value, ValueRef,
 };
@@ -15,42 +16,60 @@ use structopt::StructOpt;
 
 pub mod shell;
 
+#[cfg_attr(feature = "zh-CN", doc = "数据库连接工具")]
+#[cfg_attr(feature = "en-US", doc = "database connection manage")]
 #[derive(Debug, StructOpt)]
-#[structopt(name = "dcli", about = "数据连接工具.")]
+#[structopt(name = "dcli")]
 pub enum DCliCommand {
-    /// 配置相关命令 profile 命令别名
+    #[cfg_attr(feature = "zh-CN", doc = "配置相关命令 profile 命令别名")]
+    #[cfg_attr(feature = "en-US", doc = "profile commands alias")]
     P {
         #[structopt(subcommand)]
         cmd: ProfileCmd,
     },
-    /// 配置相关命令
+    #[cfg_attr(feature = "zh-CN", doc = "配置相关命令")]
+    #[cfg_attr(feature = "en-US", doc = "profile command")]
     Profile {
         #[structopt(subcommand)]
         cmd: ProfileCmd,
     },
-    /// 显示样式相关命令
+    #[cfg_attr(feature = "zh-CN", doc = "显示样式相关命令")]
+    #[cfg_attr(feature = "en-US", doc = "style commands")]
     Style {
         #[structopt(subcommand)]
         cmd: StyleCmd,
     },
-    /// 使用 `mysql` 命令连接到 mysql
+    #[cfg_attr(feature = "zh-CN", doc = "使用 `mysql` 命令连接到 mysql")]
+    #[cfg_attr(feature = "en-US", doc = "use `mysql` connect to mysql server")]
     Conn {
-        /// 连接配置名称
+        #[cfg_attr(feature = "zh-CN", doc = "连接配置名称")]
+        #[cfg_attr(feature = "en-US", doc = "profile name")]
         profile: String,
     },
-    /// 使用一个配置运行命令
+    #[cfg_attr(feature = "zh-CN", doc = "使用一个配置运行命令")]
+    #[cfg_attr(feature = "en-US", doc = "use a profile to exec sql")]
     Exec {
-        /// 配置名
+        #[cfg_attr(feature = "zh-CN", doc = "连接配置名称")]
+        #[cfg_attr(feature = "en-US", doc = "profile name")]
         #[structopt(short, long)]
         profile: String,
 
-        /// 命令 使用 @<文件路径> 读取 SQL 文件内容作为输入
+        #[cfg_attr(
+            feature = "zh-CN",
+            doc = "命令 使用 @<文件路径> 读取 SQL 文件内容作为输入"
+        )]
+        #[cfg_attr(
+            feature = "en-US",
+            doc = "sql, use @<file_path> to read SQL file as input"
+        )]
         command: Vec<String>,
     },
 
-    /// 运行连接到 mysql 的 shell
+    #[cfg_attr(feature = "zh-CN", doc = "运行连接到 mysql 的 shell")]
+    #[cfg_attr(feature = "en-US", doc = "launch shell connected to mysql")]
     Shell {
-        /// 配置名
+        #[cfg_attr(feature = "zh-CN", doc = "连接配置名称")]
+        #[cfg_attr(feature = "en-US", doc = "profile name")]
         #[structopt(short, long)]
         profile: String,
     },
@@ -58,55 +77,73 @@ pub enum DCliCommand {
 
 #[derive(Debug, StructOpt)]
 pub enum ProfileCmd {
-    /// 列出所有配置
+    #[cfg_attr(feature = "zh-CN", doc = "列出所有配置")]
+    #[cfg_attr(feature = "en-US", doc = "list all")]
     List,
-    /// 添加一个配置
+    #[cfg_attr(feature = "zh-CN", doc = "添加一个配置")]
+    #[cfg_attr(feature = "en-US", doc = "add a profile")]
     Add {
-        /// 配置名称
+        #[cfg_attr(feature = "zh-CN", doc = "连接配置名称")]
+        #[cfg_attr(feature = "en-US", doc = "profile name")]
         name: String,
 
-        /// 是否强制覆盖
+        #[cfg_attr(feature = "zh-CN", doc = "是否强制覆盖")]
+        #[cfg_attr(feature = "en-US", doc = "force override")]
         #[structopt(short, long)]
         force: bool,
 
         #[structopt(flatten)]
         profile: Profile,
     },
-    /// 删除一个配置
+    #[cfg_attr(feature = "zh-CN", doc = "删除一个配置")]
+    #[cfg_attr(feature = "en-US", doc = "delete a profile")]
     Del {
-        /// 配置名
+        #[cfg_attr(feature = "zh-CN", doc = "连接配置名称")]
+        #[cfg_attr(feature = "en-US", doc = "profile name")]
         profile: String,
     },
-    /// 修改已有配置
+    #[cfg_attr(feature = "zh-CN", doc = "修改已有配置")]
+    #[cfg_attr(feature = "en-US", doc = "edit a profile")]
     Set {
-        /// 配置名称
+        #[cfg_attr(feature = "zh-CN", doc = "连接配置名称")]
+        #[cfg_attr(feature = "en-US", doc = "profile name")]
         name: String,
 
-        /// 数据库 hostname, IPv6地址请使用'[]'包围
+        #[cfg_attr(feature = "zh-CN", doc = "数据库 hostname, IPv6地址请使用'[]'包围")]
+        #[cfg_attr(
+            feature = "en-US",
+            doc = "database hostname, IPv6 should be surrounded by '[]'"
+        )]
         #[structopt(short = "h", long)]
         host: Option<String>,
 
-        /// 数据库 port 0 ~ 65536
+        #[cfg_attr(feature = "zh-CN", doc = "数据库 port 1 ~ 65535")]
+        #[cfg_attr(feature = "en-US", doc = "database port 1 ~ 65535")]
         #[structopt(short = "P", long)]
         port: Option<u16>,
 
-        /// 数据库名称
+        #[cfg_attr(feature = "zh-CN", doc = "数据库名称")]
+        #[cfg_attr(feature = "en-US", doc = "database name")]
         #[structopt(short, long)]
         db: Option<String>,
 
-        /// 用户名
+        #[cfg_attr(feature = "zh-CN", doc = "用户名")]
+        #[cfg_attr(feature = "en-US", doc = "user name")]
         #[structopt(short, long)]
         user: Option<String>,
 
-        /// 密码
+        #[cfg_attr(feature = "zh-CN", doc = "密码")]
+        #[cfg_attr(feature = "en-US", doc = "password")]
         #[structopt(short = "pass", long)]
         password: Option<String>,
 
-        /// SSL 模式
+        #[cfg_attr(feature = "zh-CN", doc = "SSL 模式")]
+        #[cfg_attr(feature = "en-US", doc = "SSL Mode")]
         #[structopt(long)]
         ssl_mode: Option<SslMode>,
 
-        /// SSL CA 文件路径
+        #[cfg_attr(feature = "zh-CN", doc = "SSL CA 文件路径")]
+        #[cfg_attr(feature = "en-US", doc = "SSL CA file path")]
         #[structopt(long, parse(from_os_str))]
         ssl_ca: Option<std::path::PathBuf>,
     },
@@ -114,9 +151,17 @@ pub enum ProfileCmd {
 
 #[derive(Debug, StructOpt)]
 pub enum StyleCmd {
-    /// 配置打印表格样式
+    #[cfg_attr(feature = "zh-CN", doc = "配置打印表格样式")]
+    #[cfg_attr(feature = "en-US", doc = "config table style")]
     Table {
-        /// 选项 AsciiFull AsciiMd Utf8Full Utf8HBorderOnly
+        #[cfg_attr(
+            feature = "zh-CN",
+            doc = "选项: AsciiFull AsciiMd Utf8Full Utf8HBorderOnly"
+        )]
+        #[cfg_attr(
+            feature = "en-US",
+            doc = "choices: AsciiFull AsciiMd Utf8Full Utf8HBorderOnly"
+        )]
         style: TableStyle,
     },
 }
@@ -136,7 +181,9 @@ impl DCliCommand {
             DCliCommand::Conn { profile } => {
                 let profile = config.try_get_profile(profile)?;
                 let mut sys_cmd = profile.cmd(false);
-                let child = sys_cmd.spawn().with_context(|| "无法启动程序!")?;
+                let child = sys_cmd
+                    .spawn()
+                    .with_context(|| fl!("launch-process-failed"))?;
                 child.wait_with_output().unwrap();
                 Ok(())
             }
@@ -155,9 +202,7 @@ impl DCliCommand {
                         println!("{}", output.to_print_table(&config));
                     }
                 }
-                println!("{}", pool.num_idle());
                 pool.close().await;
-                println!("{}", pool.num_idle());
                 Ok(())
             }
             DCliCommand::Profile { cmd } | DCliCommand::P { cmd } => {
@@ -184,23 +229,23 @@ impl DCliCommand {
                     } => {
                         if let Ok(_) = config.try_get_profile(name) {
                             if !force {
-                                Err(anyhow!(format!("{} 配置已存在!", name)))?;
+                                Err(anyhow!(fl!("profile-existed", name = name.clone())))?;
                             }
                         } else {
                             let mut cp = profile.clone();
                             cp.name = name.clone();
                             config.profiles.insert(name.clone(), cp);
                             config.save()?;
-                            println!("配置已保存.");
+                            println!("{}", fl!("profile-saved"));
                         }
                     }
                     ProfileCmd::Del { profile } => {
                         let deleted = config.profiles.remove(profile);
                         if deleted.is_none() {
-                            Err(anyhow!("未找到配置."))?;
+                            Err(anyhow!(fl!("profile-saved")))?;
                         } else {
                             config.save()?;
-                            println!("配置已删除.");
+                            println!("{}", fl!("profile-deleted"));
                         }
                     }
                     ProfileCmd::Set {
@@ -237,7 +282,7 @@ impl DCliCommand {
                         }
                         config.try_set_profile(name, profile)?;
                         config.save()?;
-                        println!("{} 配置已更新", name);
+                        println!("{}", fl!("profile-updated", name = name.clone()));
                     }
                 }
                 Ok(())
