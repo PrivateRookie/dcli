@@ -1,0 +1,6 @@
+[clog]
+repository = "https://github.com/PrivateRookie/dcli"
+subtitle = "a database connection manage tool"
+link-style = "github"
+
+changelog = "changelog.md"
