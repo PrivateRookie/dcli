@@ -34,7 +34,7 @@ sqlparser = "0.6.1"
 rustyline = { version = "7.0.0", features = ["with-fuzzy"] }
 rustyline-derive = "0.4.0"
 colored = "2"
-tr = "*"
+tr = "0.1.3"
 i18n-embed = { version = "0.9.4", features = ["fluent-system", "desktop-requester"] }
 rust-embed = "5"
 i18n-embed-fl = "0.2.0"
