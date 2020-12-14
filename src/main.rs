@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
 use cli::DCliCommand;
@@ -26,14 +26,13 @@ pub mod config;
 pub mod mysql;
 pub mod utils;
 
-pub static LOADER: Lazy<Mutex<FluentLanguageLoader>> = Lazy::new(|| {
+pub static LOADER: Lazy<Arc<Mutex<FluentLanguageLoader>>> = Lazy::new(|| {
     let translations = Translations {};
-
     let language_loader: FluentLanguageLoader = fluent_language_loader!();
     let requested_languages = DesktopLanguageRequester::requested_languages();
     let _result = i18n_embed::select(&language_loader, &translations, &requested_languages);
     language_loader.set_use_isolating(false);
-    Mutex::new(language_loader)
+    Arc::new(Mutex::new(language_loader))
 });
 
 #[macro_export]
@@ -52,6 +51,9 @@ async fn main() -> Result<()> {
     let cmd = DCliCommand::from_args();
     // init_log();
     let mut config = Config::load()?;
+    if let Some(lang) = &config.lang {
+        utils::reset_loader(lang)
+    }
     cmd.run(&mut config).await?;
     Ok(())
 }

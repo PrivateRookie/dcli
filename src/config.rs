@@ -20,6 +20,46 @@ use crate::fl;
 pub struct Config {
     pub profiles: HashMap<String, Profile>,
     pub table_style: TableStyle,
+    pub lang: Option<Lang>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Lang {
+    #[serde(rename = "en-US")]
+    EnUS,
+    #[serde(rename = "zh-CN")]
+    ZhCN,
+}
+
+impl Default for Lang {
+    fn default() -> Self {
+        Lang::EnUS
+    }
+}
+
+impl FromStr for Lang {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let lower = s.to_ascii_lowercase();
+        if lower.starts_with("en-us") {
+            return Ok(Lang::EnUS);
+        } else if lower.starts_with("zh-cn") {
+            return Ok(Lang::ZhCN);
+        } else {
+            Err(anyhow!(fl!("invalid-value", val = s)))?
+        }
+    }
+}
+
+impl ToString for Lang {
+    fn to_string(&self) -> String {
+        match self {
+            Lang::EnUS => "en-US",
+            Lang::ZhCN => "zh-CN",
+        }
+        .to_string()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, StructOpt)]

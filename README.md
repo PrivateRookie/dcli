@@ -165,6 +165,12 @@ AsciiFull AsciiMd Utf8Full Utf8HBorderOnly
 
 但 dcli 属于早期阶段，所以很多功能仍然不完整，如有问题请开 ISSUE。
 
+### 设置语言
+
+默认情况下 dcli 会尝试读取本地语言设置,自动设置语言. 如果这不和预期, 可以试用
+
+`dcli style lang` 命令设置语言. 目前支持 `zh-CN` 和 `en-US` 两种语言.
+
 ### 其他命令
 
 dcli 使用 structopt 构建命令工具，当你有疑问时可以运行 `dcli help <子命令>` 查看帮助信息。

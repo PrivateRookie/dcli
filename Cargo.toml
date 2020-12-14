@@ -3,7 +3,7 @@ name = "dcli"
 version = "0.0.3"
 authors = ["PrivateRookie <996514515@qq.com>"]
 edition = "2018"
-description = "MySQL 数据库连接管理工具"
+description = "MySQL 数据库连接管理工具 | MySQL connection manage tool"
 license-file = "LICENSE"
 readme = "README.md"
 

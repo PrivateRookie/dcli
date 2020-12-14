@@ -1,5 +1,6 @@
+use crate::fl;
 use crate::{
-    config::{Config, Profile, SslMode, TableStyle},
+    config::{Config, Lang, Profile, SslMode, TableStyle},
     mysql::connect,
     utils::read_file,
 };
@@ -7,7 +8,6 @@ use anyhow::{anyhow, Context, Result};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use comfy_table::*;
-use crate::fl;
 use sqlx::{
     mysql::MySqlRow, types::time::Date, types::time::Time, Column, Row, TypeInfo, Value, ValueRef,
 };
@@ -163,6 +163,13 @@ pub enum StyleCmd {
         )]
         style: TableStyle,
     },
+    #[cfg_attr(feature = "zh-CN", doc = "设置语言")]
+    #[cfg_attr(feature = "en-US", doc = "set language")]
+    Lang {
+        #[cfg_attr(feature = "zh-CN", doc = "语言, 可选 en-US, zh-CN")]
+        #[cfg_attr(feature = "en-US", doc = "lang, options: en-US, zh-CN")]
+        name: Option<Lang>,
+    },
 }
 
 impl DCliCommand {
@@ -172,6 +179,10 @@ impl DCliCommand {
                 match cmd {
                     StyleCmd::Table { style } => {
                         config.table_style = style.clone();
+                        config.save()?;
+                    }
+                    StyleCmd::Lang { name } => {
+                        config.lang = name.clone();
                         config.save()?;
                     }
                 };
