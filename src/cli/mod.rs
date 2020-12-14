@@ -7,7 +7,6 @@ use anyhow::{anyhow, Context, Result};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use comfy_table::*;
-// use rust_decimal::Decimal;
 use crate::fl;
 use sqlx::{
     mysql::MySqlRow, types::time::Date, types::time::Time, Column, Row, TypeInfo, Value, ValueRef,
