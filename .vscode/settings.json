@@ -3,6 +3,8 @@
         "Appender",
         "Subquery",
         "VARCHAR",
+        "bigdecimal",
+        "chrono",
         "ctes",
         "dcli",
         "logfile",

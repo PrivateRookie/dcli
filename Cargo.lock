@@ -447,6 +447,9 @@ dependencies = [
  "rustyline",
  "rustyline-derive",
  "serde",
+ "serde-pickle",
+ "serde_json",
+ "serde_yaml",
  "sqlparser",
  "sqlx",
  "structopt",
@@ -992,6 +995,12 @@ name = "ipnetwork"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "02c3eaab3ac0ede60ffa41add21970a7df7d91772c03383aac6c2c3d53cc716b"
+
+[[package]]
+name = "iter-read"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ea34c173b290f2449bb0489ae1024c2cf8b1c1dd1cc58a2e105df7f5d759f5d"
 
 [[package]]
 name = "itoa"
@@ -1905,6 +1914,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06c64263859d87aa2eb554587e2d23183398d617427327cf2b3d0ed8c69e4800"
 dependencies = [
  "serde_derive",
+]
+
+[[package]]
+name = "serde-pickle"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85a3410b41f23f051f4176d1e08765ae2d10ea8e8f596bf21ca53c7a084a4566"
+dependencies = [
+ "byteorder",
+ "iter-read",
+ "num-bigint 0.3.1",
+ "num-traits",
+ "serde",
 ]
 
 [[package]]

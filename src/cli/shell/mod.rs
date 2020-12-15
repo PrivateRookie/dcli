@@ -117,7 +117,7 @@ impl Shell {
                             }
                         }
                     } else {
-                        println!("");
+                        println!();
                     }
                 }
                 Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => {

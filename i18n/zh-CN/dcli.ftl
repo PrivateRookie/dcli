@@ -21,6 +21,9 @@ profile-existed = {$name} 配置已存在
 profile-saved = 配置已保存
 profile-deleted = 配置已删除
 profile-updated = {$name} 配置已更新
+empty-input = 空命令
+too-many-input = 输入过多, 期望1个SQL语句
+serialize-output-failed = 序列化输出失败
 
 # cli/shell/mod.rs
 load-his-failed = 无法载入历史文件.

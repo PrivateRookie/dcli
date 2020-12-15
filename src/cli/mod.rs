@@ -1,22 +1,17 @@
-use crate::fl;
 use crate::{
     config::{Config, Lang, Profile, SslMode, TableStyle},
     mysql::connect,
+    output::Format,
     utils::read_file,
 };
+use crate::{fl, output::QueryOutput};
 use anyhow::{anyhow, Context, Result};
-use bigdecimal::BigDecimal;
-use chrono::{DateTime, Utc};
-use comfy_table::*;
-use sqlx::{
-    mysql::MySqlRow, types::time::Date, types::time::Time, Column, Row, TypeInfo, Value, ValueRef,
-};
 use structopt::StructOpt;
 
 pub mod shell;
 
 #[cfg_attr(feature = "zh-CN", doc = "数据库连接工具")]
-#[cfg_attr(feature = "en-US", doc = "database connection manage")]
+#[cfg_attr(feature = "en-US", doc = "database connection manage tool")]
 #[derive(Debug, StructOpt)]
 #[structopt(name = "dcli")]
 pub enum DCliCommand {
@@ -52,6 +47,28 @@ pub enum DCliCommand {
         #[cfg_attr(feature = "en-US", doc = "profile name")]
         #[structopt(short, long)]
         profile: String,
+
+        #[cfg_attr(
+            feature = "zh-CN",
+            doc = "命令 使用 @<文件路径> 读取 SQL 文件内容作为输入"
+        )]
+        #[cfg_attr(
+            feature = "en-US",
+            doc = "sql, use @<file_path> to read SQL file as input"
+        )]
+        command: Vec<String>,
+    },
+
+    Export {
+        #[cfg_attr(feature = "zh-CN", doc = "连接配置名称")]
+        #[cfg_attr(feature = "en-US", doc = "profile name")]
+        #[structopt(short, long)]
+        profile: String,
+
+        #[cfg_attr(feature = "zh-CN", doc = "输出格式: json, yaml, toml, pickle")]
+        #[cfg_attr(feature = "en-US", doc = "output format: json, yaml, toml, pickle")]
+        #[structopt(short, long, default_value = "json")]
+        format: Format,
 
         #[cfg_attr(
             feature = "zh-CN",
@@ -215,6 +232,57 @@ impl DCliCommand {
                 pool.close().await;
                 Ok(())
             }
+            DCliCommand::Export {
+                profile,
+                command,
+                format,
+            } => {
+                let profile = config.try_get_profile(profile)?;
+                let pool = connect(&profile).await?;
+                let to_execute = if command.len() == 1 && command.first().unwrap().starts_with('@')
+                {
+                    read_file(&command.first().unwrap()[1..])?
+                } else {
+                    command.join(" ")
+                };
+                let to_execute = to_execute
+                    .split(";")
+                    .filter(|sql| !sql.is_empty())
+                    .collect::<Vec<&str>>();
+                if to_execute.len() == 0 {
+                    Err(anyhow!(fl!("empty-input")))?
+                } else if to_execute.len() > 1 {
+                    Err(anyhow!(fl!("too-many-input")))?
+                } else {
+                    let output: QueryOutput = sqlx::query(to_execute.first().unwrap())
+                        .fetch_all(&pool)
+                        .await?
+                        .into();
+                    match format {
+                        Format::Json => {
+                            let out_str = serde_json::to_string(&output)
+                                .with_context(|| fl!("serialize-output-failed"))?;
+                            println!("{}", out_str);
+                        }
+                        Format::Yaml => {
+                            let out_str = serde_yaml::to_string(&output)
+                                .with_context(|| fl!("serialize-output-failed"))?;
+                            println!("{}", out_str);
+                        }
+                        Format::Toml => {
+                            let out_str = toml::to_string_pretty(&output)
+                                .with_context(|| fl!("serialize-output-failed"))?;
+                            println!("{}", out_str);
+                        }
+                        Format::Pickle => {
+                            let mut stdout = std::io::stdout();
+                            serde_pickle::to_writer(&mut stdout, &output, false)
+                                .with_context(|| fl!("serialize-output-failed"))?;
+                        }
+                    }
+                    Ok(())
+                }
+            }
             DCliCommand::Profile { cmd } | DCliCommand::P { cmd } => {
                 match cmd {
                     ProfileCmd::List => {
@@ -299,78 +367,5 @@ impl DCliCommand {
             }
             DCliCommand::Shell { profile } => shell::Shell::run(config, profile).await,
         }
-    }
-}
-
-pub struct QueryOutput {
-    rows: Vec<MySqlRow>,
-}
-
-impl From<Vec<MySqlRow>> for QueryOutput {
-    fn from(rows: Vec<MySqlRow>) -> Self {
-        Self { rows }
-    }
-}
-
-impl QueryOutput {
-    pub fn to_print_table(&self, config: &Config) -> Table {
-        if self.rows.is_empty() {
-            return config.new_table();
-        }
-        let header = self.rows.first().unwrap();
-        let header_cols = header.columns();
-        if header_cols.is_empty() {
-            return config.new_table();
-        }
-        let mut table = config.new_table();
-        table.set_header(header_cols.iter().map(|col| col.name()));
-        self.rows.iter().for_each(|row| {
-            table.add_row(row.columns().iter().map(|col| {
-                let val_ref = row.try_get_raw(col.ordinal()).unwrap();
-                let val = ValueRef::to_owned(&val_ref);
-                let val = if val.is_null() {
-                    Ok(String::new())
-                } else {
-                    let ty_info = col.type_info();
-                    // ref: https://github.com/launchbadge/sqlx/blob/7a707179448a1787f106138f4821ab3fa062db2a/sqlx-core/src/mysql/protocol/text/column.rs#L172
-                    match ty_info.name() {
-                        "BOOLEAN" => val.try_decode::<bool>().map(|v| v.to_string()),
-                        "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "INT UNSIGNED"
-                        | "MEDIUMINT UNSIGNED" | "BIGINT UNSIGNED" => {
-                            val.try_decode::<u64>().map(|v| v.to_string())
-                        }
-                        "TINYINT" | "SMALLINT" | "INT" | "MEDIUMINT" | "BIGINT" => {
-                            val.try_decode::<i64>().map(|v| v.to_string())
-                        }
-                        "FLOAT" => val.try_decode::<f32>().map(|v| v.to_string()),
-                        "DOUBLE" => val.try_decode::<f64>().map(|v| v.to_string()),
-                        "NULL" => Ok("NULL".to_string()),
-                        "DATE" => val.try_decode::<Date>().map(|v| v.to_string()),
-                        "TIME" => val.try_decode::<Time>().map(|v| v.to_string()),
-                        "YEAR" => val.try_decode::<u64>().map(|v| v.to_string()),
-                        // TODO add tz config
-                        "TIMESTAMP" | "DATETIME" => {
-                            val.try_decode::<DateTime<Utc>>().map(|v| v.to_string())
-                        }
-                        "BIT" | "ENUM" | "SET" => val.try_decode::<String>(),
-                        "DECIMAL" => val.try_decode::<BigDecimal>().map(|v| v.to_string()),
-                        "GEOMETRY" | "JSON" => val.try_decode::<String>(),
-                        "BINARY" => Ok("BINARY".to_string()),
-                        "VARBINARY" => Ok("VARBINARY".to_string()),
-                        "CHAR" | "VARCHAR" | "TINYTEXT" | "TEXT" | "MEDIUMTEXT" | "LONGTEXT" => {
-                            val.try_decode::<String>()
-                        }
-                        "TINYBLOB" => Ok("TINYBLOB".to_string()),
-                        "BLOB" => Ok("BLOB".to_string()),
-                        "MEDIUMBLOB" => Ok("MEDIUMBLOB".to_string()),
-                        "LONGBLOB" => Ok("LONGBLOB".to_string()),
-
-                        t @ _ => unreachable!(t),
-                    }
-                };
-                val.unwrap()
-            }));
-        });
-        table
     }
 }

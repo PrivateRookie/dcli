@@ -21,6 +21,9 @@ profile-existed = {$name} profile saved
 profile-saved = profile saved
 profile-deleted = profile deleted
 profile-updated = {$name} profile updated
+empty-input = empty input
+too-many-input = too many input, expect one command
+serialize-output-failed = failed to serialize query output
 
 # cli/shell/mod.rs
 load-his-failed = can not load history file.
