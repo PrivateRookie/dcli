@@ -22,7 +22,7 @@ pub fn reset_loader(lang: &Lang) {
     };
     let translations = Translations {};
     let language_loader: FluentLanguageLoader = fluent_language_loader!();
-    let _result = i18n_embed::select(&language_loader, &translations, &vec![lang]);
+    let _result = i18n_embed::select(&language_loader, &translations, &[lang]);
     language_loader.set_use_isolating(false);
     *crate::LOADER.lock().unwrap() = language_loader
 }

@@ -43,11 +43,11 @@ impl FromStr for Lang {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let lower = s.to_ascii_lowercase();
         if lower.starts_with("en-us") {
-            return Ok(Lang::EnUS);
+            Ok(Lang::EnUS)
         } else if lower.starts_with("zh-cn") {
-            return Ok(Lang::ZhCN);
+            Ok(Lang::ZhCN)
         } else {
-            Err(anyhow!(fl!("invalid-value", val = s)))?
+            Err(anyhow!(fl!("invalid-value", val = s)))
         }
     }
 }
@@ -130,7 +130,7 @@ impl FromStr for SslMode {
             "required" => SslMode::Required,
             "verify_ca" => SslMode::VerifyCa,
             "verify_identity" => SslMode::VerifyIdentity,
-            _ => Err(anyhow!(fl!("invalid-value", val = s)))?,
+            _ => return Err(anyhow!(fl!("invalid-value", val = s))),
         };
         Ok(val)
     }
@@ -159,7 +159,7 @@ impl FromStr for TableStyle {
             "asciimd" => TableStyle::AsciiMd,
             "utf8full" => TableStyle::Utf8Full,
             "utf8hborderonly" => TableStyle::Utf8HBorderOnly,
-            _ => Err(anyhow!(fl!("invalid-value", val = s)))?,
+            _ => return Err(anyhow!(fl!("invalid-value", val = s))),
         };
         Ok(val)
     }

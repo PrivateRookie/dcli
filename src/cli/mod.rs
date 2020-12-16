@@ -223,7 +223,7 @@ impl DCliCommand {
                 } else {
                     command.join(" ")
                 };
-                for sql in to_execute.split(";") {
+                for sql in to_execute.split(';') {
                     if !sql.is_empty() {
                         let output: QueryOutput = sqlx::query(sql).fetch_all(&pool).await?.into();
                         println!("{}", output.to_print_table(&config));
@@ -246,13 +246,13 @@ impl DCliCommand {
                     command.join(" ")
                 };
                 let to_execute = to_execute
-                    .split(";")
+                    .split(';')
                     .filter(|sql| !sql.is_empty())
                     .collect::<Vec<&str>>();
-                if to_execute.len() == 0 {
-                    Err(anyhow!(fl!("empty-input")))?
+                if to_execute.is_empty() {
+                    return Err(anyhow!(fl!("empty-input")));
                 } else if to_execute.len() > 1 {
-                    Err(anyhow!(fl!("too-many-input")))?
+                    return Err(anyhow!(fl!("too-many-input")));
                 } else {
                     let output: QueryOutput = sqlx::query(to_execute.first().unwrap())
                         .fetch_all(&pool)
@@ -305,9 +305,9 @@ impl DCliCommand {
                         force,
                         profile,
                     } => {
-                        if let Ok(_) = config.try_get_profile(name) {
+                        if config.try_get_profile(name).is_ok() {
                             if !force {
-                                Err(anyhow!(fl!("profile-existed", name = name.clone())))?;
+                                return Err(anyhow!(fl!("profile-existed", name = name.clone())));
                             }
                         } else {
                             let mut cp = profile.clone();
@@ -320,7 +320,7 @@ impl DCliCommand {
                     ProfileCmd::Del { profile } => {
                         let deleted = config.profiles.remove(profile);
                         if deleted.is_none() {
-                            Err(anyhow!(fl!("profile-saved")))?;
+                            return Err(anyhow!(fl!("profile-saved")));
                         } else {
                             config.save()?;
                             println!("{}", fl!("profile-deleted"));
@@ -341,7 +341,7 @@ impl DCliCommand {
                             profile.host = host.to_string();
                         }
                         if let Some(port) = port {
-                            profile.port = port.clone();
+                            profile.port = *port;
                         }
                         if let Some(db) = db {
                             profile.db = db.clone()

@@ -7,7 +7,7 @@ use sqlx::{
     MySqlPool,
 };
 
-pub const KEYWORDS: [&'static str; 389] = [
+pub const KEYWORDS: [&str; 389] = [
     "ABS",
     "ACTION",
     "ADD",
@@ -399,7 +399,7 @@ pub const KEYWORDS: [&'static str; 389] = [
     "ZONE",
 ];
 
-const SCHEMA_TABLE: &'static str = "information_schema";
+const SCHEMA_TABLE: &str = "information_schema";
 
 pub async fn connect(profile: &Profile) -> Result<MySqlPool> {
     let conn = MySqlConnectOptions::new()

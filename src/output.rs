@@ -40,15 +40,15 @@ impl FromStr for Format {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let lower = s.to_ascii_lowercase();
         if lower == "json" {
-            return Ok(Format::Json);
+            Ok(Format::Json)
         } else if lower == "yaml" {
-            return Ok(Format::Yaml);
+            Ok(Format::Yaml)
         } else if lower == "toml" {
-            return Ok(Format::Toml);
+            Ok(Format::Toml)
         } else if lower == "pickle" {
-            return Ok(Format::Pickle);
+            Ok(Format::Pickle)
         } else {
-            Err(anyhow!(fl!("invalid-value", val = s)))?
+            Err(anyhow!(fl!("invalid-value", val = s)))
         }
     }
 }
@@ -66,7 +66,7 @@ pub struct QueryOutput {
 
 impl From<Vec<MySqlRow>> for QueryOutput {
     fn from(rows: Vec<MySqlRow>) -> Self {
-        let rows = rows.into_iter().map(|r| DCliRow(r)).collect();
+        let rows = rows.into_iter().map(DCliRow).collect();
         Self { rows }
     }
 }
@@ -173,7 +173,7 @@ impl<'a> Serialize for DCliColumn<'a> {
                 "MEDIUMBLOB" => serializer.serialize_str("MEDIUMBLOB"),
                 "LONGBLOB" => serializer.serialize_str("LONGBLOB"),
 
-                t @ _ => unreachable!(t),
+                t => unreachable!(t),
             }
         }
     }
@@ -232,7 +232,7 @@ impl QueryOutput {
                         "MEDIUMBLOB" => Ok("MEDIUMBLOB".to_string()),
                         "LONGBLOB" => Ok("LONGBLOB".to_string()),
 
-                        t @ _ => unreachable!(t),
+                        t => unreachable!(t),
                     }
                 };
                 val.unwrap()

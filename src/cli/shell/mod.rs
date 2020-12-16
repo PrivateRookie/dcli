@@ -80,7 +80,7 @@ impl Shell {
                                         }
                                         BuiltIn::Run { path } => match read_file(&path) {
                                             Ok(content) => {
-                                                for sql in content.split(";") {
+                                                for sql in content.split(';') {
                                                     if !sql.is_empty() {
                                                         let output: QueryOutput = sqlx::query(sql)
                                                             .fetch_all(&pool)
@@ -136,7 +136,7 @@ impl Shell {
     }
 
     fn take_builtin(line: &str) -> anyhow::Result<Option<BuiltIn>> {
-        if line.starts_with("%") {
+        if line.starts_with('%') {
             let builtin =
                 BuiltIn::from_iter_safe(format!("builtin {}", line).split_ascii_whitespace())
                     .map_err(|mut e| {

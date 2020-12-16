@@ -176,8 +176,8 @@ impl Validator for MyHelper {
         ctx: &mut validate::ValidationContext,
     ) -> rustyline::Result<validate::ValidationResult> {
         let input = ctx.input();
-        if !input.starts_with("%") {
-            if input.chars().all(|c| c.is_whitespace()) || input.ends_with(";") {
+        if !input.starts_with('%') {
+            if input.chars().all(|c| c.is_whitespace()) || input.ends_with(';') {
                 Ok(validate::ValidationResult::Valid(None))
             } else {
                 Ok(validate::ValidationResult::Incomplete)
@@ -188,10 +188,10 @@ impl Validator for MyHelper {
     }
 }
 
-pub async fn get_editor(mut conn: &mut MySqlPool) -> anyhow::Result<Editor<MyHelper>> {
-    let databases = all_databases(&mut conn).await?;
-    let tables = all_tables(&mut conn).await?;
-    let columns = all_columns(&mut conn, &tables).await?;
+pub async fn get_editor(conn: &mut MySqlPool) -> anyhow::Result<Editor<MyHelper>> {
+    let databases = all_databases(&conn).await?;
+    let tables = all_tables(&conn).await?;
+    let columns = all_columns(&conn, &tables).await?;
     let config = Config::builder()
         .history_ignore_space(true)
         .completion_type(CompletionType::List)
