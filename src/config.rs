@@ -21,6 +21,7 @@ pub struct Config {
     pub profiles: HashMap<String, Profile>,
     pub table_style: TableStyle,
     pub lang: Option<Lang>,
+    pub debug: bool
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

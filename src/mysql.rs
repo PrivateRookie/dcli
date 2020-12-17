@@ -462,6 +462,10 @@ pub async fn all_columns(
     tables: &HashSet<String>,
 ) -> Result<HashMap<String, HashSet<String>>> {
     let mut columns: HashMap<String, HashSet<String>> = HashMap::new();
+    if tables.is_empty() {
+        return Ok(columns);
+    }
+
     let sql = format!(
         "SELECT TABLE_NAME, COLUMN_NAME FROM {}.COLUMNS WHERE table_name IN ({})",
         SCHEMA_TABLE,

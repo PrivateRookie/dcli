@@ -10,11 +10,11 @@ use once_cell::sync::Lazy;
 use rust_embed::RustEmbed;
 
 use config::Config;
-// use log::LevelFilter;
-// use log4rs::{
-//     append::file::FileAppender,
-//     config::{Appender, Config as LogConfig, Root},
-// };
+use log::LevelFilter;
+use log4rs::{
+    append::file::FileAppender,
+    config::{Appender, Config as LogConfig, Root},
+};
 use structopt::StructOpt;
 
 #[derive(RustEmbed)]
@@ -24,8 +24,8 @@ struct Translations;
 pub mod cli;
 pub mod config;
 pub mod mysql;
-pub mod utils;
 pub mod output;
+pub mod utils;
 
 pub static LOADER: Lazy<Arc<Mutex<FluentLanguageLoader>>> = Lazy::new(|| {
     let translations = Translations {};
@@ -50,8 +50,8 @@ macro_rules! fl {
 #[tokio::main]
 async fn main() -> Result<()> {
     let cmd = DCliCommand::from_args();
-    // init_log();
     let mut config = Config::load()?;
+    init_log(&config);
     if let Some(lang) = &config.lang {
         utils::reset_loader(lang)
     }
@@ -59,11 +59,13 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-// fn init_log() {
-//     let logfile = FileAppender::builder().build("dcli.log").unwrap();
-//     let config = LogConfig::builder()
-//         .appender(Appender::builder().build("logfile", Box::new(logfile)))
-//         .build(Root::builder().appender("logfile").build(LevelFilter::Info))
-//         .unwrap();
-//     log4rs::init_config(config).unwrap();
-// }
+fn init_log(config: &Config) {
+    if config.debug {
+        let logfile = FileAppender::builder().build("dcli.log").unwrap();
+        let config = LogConfig::builder()
+            .appender(Appender::builder().build("logfile", Box::new(logfile)))
+            .build(Root::builder().appender("logfile").build(LevelFilter::Info))
+            .unwrap();
+        log4rs::init_config(config).unwrap();
+    }
+}
