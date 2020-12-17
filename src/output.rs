@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Context, Result};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use comfy_table::*;
@@ -12,12 +12,14 @@ use sqlx::{
     types::time::Time,
     Column, Row, TypeInfo, Value, ValueRef,
 };
-use std::str::FromStr;
+use std::{str::FromStr, vec};
 
 use crate::{config::Config, fl};
 
 #[derive(Debug, Clone, Serialize)]
 pub enum Format {
+    #[serde(rename = "csv")]
+    Csv,
     #[serde(rename = "json")]
     Json,
     #[serde(rename = "yaml")]
@@ -41,6 +43,8 @@ impl FromStr for Format {
         let lower = s.to_ascii_lowercase();
         if lower == "json" {
             Ok(Format::Json)
+        } else if lower == "csv" {
+            Ok(Format::Csv)
         } else if lower == "yaml" {
             Ok(Format::Yaml)
         } else if lower == "toml" {
@@ -71,32 +75,66 @@ impl From<Vec<MySqlRow>> for QueryOutput {
     }
 }
 
-impl Serialize for QueryOutput {
+struct QueryOutputMapSer<'a>(&'a QueryOutput);
+struct DcliRowMapSer<'a>(&'a DCliRow);
+struct QueryOutputListSer<'a>(&'a QueryOutput);
+struct DcliRowListSer<'a>(&'a DCliRow);
+
+impl<'a> Serialize for QueryOutputMapSer<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        let mut seq = serializer.serialize_seq(Some(self.rows.len()))?;
-        for row in self.rows.iter() {
-            seq.serialize_element(row)?;
+        let mut seq = serializer.serialize_seq(Some(self.0.rows.len()))?;
+        for row in self.0.rows.iter().map(DcliRowMapSer) {
+            seq.serialize_element(&row)?;
         }
         seq.end()
     }
 }
 
-impl Serialize for DCliRow {
+impl<'a> Serialize for DcliRowMapSer<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        let mut map = serializer.serialize_map(Some(self.0.len()))?;
-        for col in self.0.columns().iter().map(|c| {
-            let val_ref = self.0.try_get_raw(c.ordinal()).unwrap();
+        let mut map = serializer.serialize_map(Some(self.0 .0.len()))?;
+        for col in self.0 .0.columns().iter().map(|c| {
+            let val_ref = self.0 .0.try_get_raw(c.ordinal()).unwrap();
             DCliColumn { col: c, val_ref }
         }) {
             map.serialize_entry(col.col.name(), &col)?;
         }
         map.end()
+    }
+}
+
+impl<'a> Serialize for QueryOutputListSer<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(self.0.rows.len()))?;
+        for row in self.0.rows.iter().map(DcliRowListSer) {
+            seq.serialize_element(&row)?;
+        }
+        seq.end()
+    }
+}
+
+impl<'a> Serialize for DcliRowListSer<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(self.0 .0.len()))?;
+        for col in self.0 .0.columns().iter().map(|c| {
+            let val_ref = self.0 .0.try_get_raw(c.ordinal()).unwrap();
+            DCliColumn { col: c, val_ref }
+        }) {
+            seq.serialize_element(&col)?;
+        }
+        seq.end()
     }
 }
 
@@ -239,5 +277,54 @@ impl QueryOutput {
             }));
         });
         table
+    }
+
+    pub fn to_csv(&self) -> Result<String> {
+        if self.rows.is_empty() {
+            return Ok(String::new());
+        }
+        let headers = self
+            .rows
+            .first()
+            .unwrap()
+            .0
+            .columns()
+            .iter()
+            .map(|c| c.name())
+            .collect::<Vec<&str>>()
+            .join(",");
+        let mut out = vec![];
+        out.extend(headers.as_bytes());
+        out.push('\n' as u8);
+        {
+            let mut wtr = csv::Writer::from_writer(&mut out);
+            for row in self.rows.iter().map(DcliRowListSer) {
+                wtr.serialize(row)
+                    .with_context(|| fl!("serialize-output-failed"))?;
+            }
+        }
+        Ok(String::from_utf8_lossy(&out).to_string())
+    }
+
+    pub fn to_json(&self) -> Result<String> {
+        serde_json::to_string(&QueryOutputMapSer(self))
+            .with_context(|| fl!("serialize-output-failed"))
+    }
+
+    pub fn to_yaml(&self) -> Result<String> {
+        serde_yaml::to_string(&QueryOutputMapSer(self))
+            .with_context(|| fl!("serialize-output-failed"))
+    }
+
+    pub fn to_toml(&self) -> Result<String> {
+        toml::to_string_pretty(&QueryOutputMapSer(self))
+            .with_context(|| fl!("serialize-output-failed"))
+    }
+
+    pub fn to_pickle(&self) -> Result<Vec<u8>> {
+        let mut out = vec![];
+        serde_pickle::to_writer(&mut out, &QueryOutputMapSer(self), false)
+            .with_context(|| fl!("serialize-output-failed"))?;
+        Ok(out)
     }
 }

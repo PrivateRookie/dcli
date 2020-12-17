@@ -6,6 +6,7 @@ use crate::{
 };
 use crate::{fl, output::QueryOutput};
 use anyhow::{anyhow, Context, Result};
+use std::io::Write;
 use structopt::StructOpt;
 
 pub mod shell;
@@ -59,15 +60,20 @@ pub enum DCliCommand {
         command: Vec<String>,
     },
 
+    #[cfg_attr(feature = "zh-CN", doc = "导出查询结果")]
+    #[cfg_attr(feature = "en-US", doc = "export query output")]
     Export {
         #[cfg_attr(feature = "zh-CN", doc = "连接配置名称")]
         #[cfg_attr(feature = "en-US", doc = "profile name")]
         #[structopt(short, long)]
         profile: String,
 
-        #[cfg_attr(feature = "zh-CN", doc = "输出格式: json, yaml, toml, pickle")]
-        #[cfg_attr(feature = "en-US", doc = "output format: json, yaml, toml, pickle")]
-        #[structopt(short, long, default_value = "json")]
+        #[cfg_attr(feature = "zh-CN", doc = "输出格式: csv, json, yaml, toml, pickle")]
+        #[cfg_attr(
+            feature = "en-US",
+            doc = "output format: csv, json, yaml, toml, pickle"
+        )]
+        #[structopt(short, long, default_value = "csv")]
         format: Format,
 
         #[cfg_attr(
@@ -259,25 +265,26 @@ impl DCliCommand {
                         .await?
                         .into();
                     match format {
+                        Format::Csv => {
+                            let out = output.to_csv()?;
+                            println!("{}", out);
+                        }
                         Format::Json => {
-                            let out_str = serde_json::to_string(&output)
-                                .with_context(|| fl!("serialize-output-failed"))?;
-                            println!("{}", out_str);
+                            let out = output.to_json()?;
+                            println!("{}", out);
                         }
                         Format::Yaml => {
-                            let out_str = serde_yaml::to_string(&output)
-                                .with_context(|| fl!("serialize-output-failed"))?;
-                            println!("{}", out_str);
+                            let out = output.to_yaml()?;
+                            println!("{}", out);
                         }
                         Format::Toml => {
-                            let out_str = toml::to_string_pretty(&output)
-                                .with_context(|| fl!("serialize-output-failed"))?;
-                            println!("{}", out_str);
+                            let out = output.to_toml()?;
+                            println!("{}", out);
                         }
                         Format::Pickle => {
                             let mut stdout = std::io::stdout();
-                            serde_pickle::to_writer(&mut stdout, &output, false)
-                                .with_context(|| fl!("serialize-output-failed"))?;
+                            stdout.write_all(&output.to_pickle()?)?;
+                            stdout.flush()?;
                         }
                     }
                     Ok(())

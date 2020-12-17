@@ -2,3 +2,5 @@
 
 history.txt
 *.log
+
+.venv
