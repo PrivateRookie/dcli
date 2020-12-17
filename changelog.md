@@ -1,3 +1,20 @@
+<a name="0.0.4"></a>
+## 0.0.4 support export data & bug fix (2020-12-17)
+
+
+#### Features
+
+*   support csv export ([06ffb29e](https://github.com/PrivateRookie/dcli/commit/06ffb29ed40395bb56e92408fa671eba5ae11cbe))
+*   add export command ([e98b0c6f](https://github.com/PrivateRookie/dcli/commit/e98b0c6fa39dace54c9d746706b19e778676cb58))
+*   add lang setting ([5834716b](https://github.com/PrivateRookie/dcli/commit/5834716b326931cca8c15d805c0be42149500712))
+
+#### Bug Fixes
+
+*   fix connect failed when database is empty ([725df2be](https://github.com/PrivateRookie/dcli/commit/725df2be3e75b5f1bb6cf6f456d54ff9af24af6f))
+*   remove unuse deps ([a6aac0ed](https://github.com/PrivateRookie/dcli/commit/a6aac0edd5b9b85516ce717f961816c381def653))
+
+
+
 <a name="0.0.3"></a>
 ## 0.0.3 i18n support and some features (2020-12-12)
 
