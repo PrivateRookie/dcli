@@ -1,6 +1,5 @@
-use super::QueryOutput;
-use crate::fl;
 use crate::{config::Config, utils::read_file};
+use crate::{fl, mysql::Session};
 use anyhow::Context;
 use colored::*;
 use highlight::{MonoKaiSchema, Schema};
@@ -47,8 +46,8 @@ impl Shell {
     pub async fn run(config: &mut Config, profile: &str) -> anyhow::Result<()> {
         let profile = config.try_get_profile(profile)?;
         let history = profile.load_or_create_history()?;
-        let mut pool = crate::mysql::connect(&profile).await?;
-        let mut rl = helper::get_editor(&mut pool).await?;
+        let mut session = Session::connect_with(&profile).await?;
+        let mut rl = helper::get_editor(&mut session).await?;
         let mut count: usize = 1;
         rl.load_history(&history)
             .with_context(|| fl!("load-his-failed"))?;
@@ -82,10 +81,7 @@ impl Shell {
                                             Ok(content) => {
                                                 for sql in content.split(';') {
                                                     if !sql.is_empty() {
-                                                        let output: QueryOutput = sqlx::query(sql)
-                                                            .fetch_all(&pool)
-                                                            .await?
-                                                            .into();
+                                                        let output = session.query(sql).await?;
                                                         println!(
                                                             "{}",
                                                             output.to_print_table(&config)
@@ -100,9 +96,8 @@ impl Shell {
                                     }
                                     rl.add_history_entry(line.as_str());
                                 } else {
-                                    match sqlx::query(&line).fetch_all(&pool).await {
-                                        Ok(resp) => {
-                                            let output: QueryOutput = resp.into();
+                                    match session.query(&line).await {
+                                        Ok(output) => {
                                             println!("{}", output.to_print_table(config));
                                             rl.add_history_entry(line.as_str());
                                         }
@@ -130,7 +125,7 @@ impl Shell {
             }
             count += 1;
         }
-        pool.close().await;
+        session.close().await;
         rl.append_history(&history).unwrap();
         Ok(())
     }

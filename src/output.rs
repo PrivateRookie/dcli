@@ -8,8 +8,7 @@ use serde::{
 };
 use sqlx::{
     mysql::{MySqlColumn, MySqlRow, MySqlValueRef},
-    types::time::Date,
-    types::time::Time,
+    types::time::{Date, Time},
     Column, Row, TypeInfo, Value, ValueRef,
 };
 use std::{str::FromStr, vec};
@@ -56,29 +55,18 @@ impl FromStr for Format {
         }
     }
 }
-
+pub struct QueryOutput {
+    pub rows: Vec<MySqlRow>,
+}
 pub struct DCliColumn<'a> {
     pub col: &'a MySqlColumn,
     pub val_ref: MySqlValueRef<'a>,
 }
 
-pub struct DCliRow(MySqlRow);
-
-pub struct QueryOutput {
-    pub rows: Vec<DCliRow>,
-}
-
-impl From<Vec<MySqlRow>> for QueryOutput {
-    fn from(rows: Vec<MySqlRow>) -> Self {
-        let rows = rows.into_iter().map(DCliRow).collect();
-        Self { rows }
-    }
-}
-
 struct QueryOutputMapSer<'a>(&'a QueryOutput);
-struct DcliRowMapSer<'a>(&'a DCliRow);
+struct DcliRowMapSer<'a>(&'a MySqlRow);
 struct QueryOutputListSer<'a>(&'a QueryOutput);
-struct DcliRowListSer<'a>(&'a DCliRow);
+struct DcliRowListSer<'a>(&'a MySqlRow);
 
 impl<'a> Serialize for QueryOutputMapSer<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -98,9 +86,9 @@ impl<'a> Serialize for DcliRowMapSer<'a> {
     where
         S: serde::Serializer,
     {
-        let mut map = serializer.serialize_map(Some(self.0 .0.len()))?;
-        for col in self.0 .0.columns().iter().map(|c| {
-            let val_ref = self.0 .0.try_get_raw(c.ordinal()).unwrap();
+        let mut map = serializer.serialize_map(Some(self.0.len()))?;
+        for col in self.0.columns().iter().map(|c| {
+            let val_ref = self.0.try_get_raw(c.ordinal()).unwrap();
             DCliColumn { col: c, val_ref }
         }) {
             map.serialize_entry(col.col.name(), &col)?;
@@ -127,9 +115,9 @@ impl<'a> Serialize for DcliRowListSer<'a> {
     where
         S: serde::Serializer,
     {
-        let mut seq = serializer.serialize_seq(Some(self.0 .0.len()))?;
-        for col in self.0 .0.columns().iter().map(|c| {
-            let val_ref = self.0 .0.try_get_raw(c.ordinal()).unwrap();
+        let mut seq = serializer.serialize_seq(Some(self.0.len()))?;
+        for col in self.0.columns().iter().map(|c| {
+            let val_ref = self.0.try_get_raw(c.ordinal()).unwrap();
             DCliColumn { col: c, val_ref }
         }) {
             seq.serialize_element(&col)?;
@@ -182,8 +170,15 @@ impl<'a> Serialize for DCliColumn<'a> {
                     let v = val.try_decode::<u64>().unwrap();
                     serializer.serialize_u64(v)
                 }
-                // TODO add tz config
-                "TIMESTAMP" | "DATETIME" => {
+                // NOTE not sure for this
+                // ref https://dev.mysql.com/doc/refman/8.0/en/time-zone-support.html
+                "DATETIME" => {
+                    let v = val
+                        .try_decode::<sqlx::types::time::OffsetDateTime>()
+                        .unwrap();
+                    serializer.serialize_str(&v.to_string())
+                }
+                "TIMESTAMP" => {
                     let v = val.try_decode::<DateTime<Utc>>().unwrap();
                     serializer.serialize_str(&v.to_string())
                 }
@@ -223,15 +218,15 @@ impl QueryOutput {
             return config.new_table();
         }
         let header = self.rows.first().unwrap();
-        let header_cols = header.0.columns();
+        let header_cols = header.columns();
         if header_cols.is_empty() {
             return config.new_table();
         }
         let mut table = config.new_table();
         table.set_header(header_cols.iter().map(|col| col.name()));
         self.rows.iter().for_each(|row| {
-            table.add_row(row.0.columns().iter().map(|col| {
-                let val_ref = row.0.try_get_raw(col.ordinal()).unwrap();
+            table.add_row(row.columns().iter().map(|col| {
+                let val_ref = row.try_get_raw(col.ordinal()).unwrap();
                 let val = ValueRef::to_owned(&val_ref);
                 let val = if val.is_null() {
                     Ok(String::new())
@@ -253,10 +248,13 @@ impl QueryOutput {
                         "DATE" => val.try_decode::<Date>().map(|v| v.to_string()),
                         "TIME" => val.try_decode::<Time>().map(|v| v.to_string()),
                         "YEAR" => val.try_decode::<u64>().map(|v| v.to_string()),
-                        // TODO add tz config
-                        "TIMESTAMP" | "DATETIME" => {
-                            val.try_decode::<DateTime<Utc>>().map(|v| v.to_string())
-                        }
+                        // NOTE not sure for this
+                        "DATETIME" => val
+                            .try_decode::<sqlx::types::time::OffsetDateTime>()
+                            .map(|v| v.to_string()),
+                        "TIMESTAMP" => val
+                            .try_decode::<chrono::DateTime<Utc>>()
+                            .map(|v| v.to_string()),
                         "BIT" | "ENUM" | "SET" => val.try_decode::<String>(),
                         "DECIMAL" => val.try_decode::<BigDecimal>().map(|v| v.to_string()),
                         "GEOMETRY" | "JSON" => val.try_decode::<String>(),
@@ -287,7 +285,6 @@ impl QueryOutput {
             .rows
             .first()
             .unwrap()
-            .0
             .columns()
             .iter()
             .map(|c| c.name())
@@ -295,7 +292,7 @@ impl QueryOutput {
             .join(",");
         let mut out = vec![];
         out.extend(headers.as_bytes());
-        out.push('\n' as u8);
+        out.push(b'\n');
         {
             let mut wtr = csv::Writer::from_writer(&mut out);
             for row in self.rows.iter().map(DcliRowListSer) {

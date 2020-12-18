@@ -32,7 +32,7 @@ log4rs = "1.0.0-alpha-2"
 log = "0.4.11"
 
 sqlparser = "0.6.1"
-rustyline = { version = "7.0.0", features = ["with-fuzzy"] }
+rustyline = { version = "7.1.0", features = ["with-fuzzy"] }
 rustyline-derive = "0.4.0"
 colored = "2"
 i18n-embed = { version = "0.9.4", features = ["fluent-system", "desktop-requester"] }

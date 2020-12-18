@@ -1,10 +1,10 @@
+use crate::fl;
 use crate::{
     config::{Config, Lang, Profile, SslMode, TableStyle},
-    mysql::connect,
+    mysql::Session,
     output::Format,
     utils::read_file,
 };
-use crate::{fl, output::QueryOutput};
 use anyhow::{anyhow, Context, Result};
 use std::io::Write;
 use structopt::StructOpt;
@@ -222,7 +222,7 @@ impl DCliCommand {
             }
             DCliCommand::Exec { profile, command } => {
                 let profile = config.try_get_profile(profile)?;
-                let pool = connect(&profile).await?;
+                let session = Session::connect_with(&profile).await?;
                 let to_execute = if command.len() == 1 && command.first().unwrap().starts_with('@')
                 {
                     read_file(&command.first().unwrap()[1..])?
@@ -231,11 +231,11 @@ impl DCliCommand {
                 };
                 for sql in to_execute.split(';') {
                     if !sql.is_empty() {
-                        let output: QueryOutput = sqlx::query(sql).fetch_all(&pool).await?.into();
+                        let output = session.query(sql).await?;
                         println!("{}", output.to_print_table(&config));
                     }
                 }
-                pool.close().await;
+                session.close().await;
                 Ok(())
             }
             DCliCommand::Export {
@@ -244,7 +244,7 @@ impl DCliCommand {
                 format,
             } => {
                 let profile = config.try_get_profile(profile)?;
-                let pool = connect(&profile).await?;
+                let session = Session::connect_with(&profile).await?;
                 let to_execute = if command.len() == 1 && command.first().unwrap().starts_with('@')
                 {
                     read_file(&command.first().unwrap()[1..])?
@@ -260,10 +260,7 @@ impl DCliCommand {
                 } else if to_execute.len() > 1 {
                     return Err(anyhow!(fl!("too-many-input")));
                 } else {
-                    let output: QueryOutput = sqlx::query(to_execute.first().unwrap())
-                        .fetch_all(&pool)
-                        .await?
-                        .into();
+                    let output = session.query(to_execute.first().unwrap()).await?;
                     match format {
                         Format::Csv => {
                             let out = output.to_csv()?;

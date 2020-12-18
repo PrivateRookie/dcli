@@ -1,12 +1,11 @@
 use colored::*;
 use sqlparser::dialect::MySqlDialect;
-use sqlx::MySqlPool;
 use std::{
     borrow::Cow::{self, Borrowed, Owned},
     collections::{HashMap, HashSet},
 };
 
-use crate::mysql::{all_columns, all_databases, all_tables};
+use crate::mysql::Session;
 
 use super::highlight::{MonoKaiSchema, SQLHighLight, Schema};
 use rustyline::completion::{Completer, Pair};
@@ -188,10 +187,10 @@ impl Validator for MyHelper {
     }
 }
 
-pub async fn get_editor(conn: &mut MySqlPool) -> anyhow::Result<Editor<MyHelper>> {
-    let databases = all_databases(&conn).await?;
-    let tables = all_tables(&conn).await?;
-    let columns = all_columns(&conn, &tables).await?;
+pub async fn get_editor(session: &mut Session) -> anyhow::Result<Editor<MyHelper>> {
+    let databases = session.all_databases().await?;
+    let tables = session.all_tables().await?;
+    let columns = session.all_columns(&tables).await?;
     let config = Config::builder()
         .history_ignore_space(true)
         .completion_type(CompletionType::List)
