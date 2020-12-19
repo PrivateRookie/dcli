@@ -194,18 +194,14 @@ impl<'a> Serialize for DCliColumn<'a> {
                     let v = val.try_decode::<String>().unwrap();
                     serializer.serialize_str(&v)
                 }
-                // TODO decode as base64?
-                "BINARY" => serializer.serialize_str("BINARY"),
-                "VARBINARY" => serializer.serialize_str("VARBINARY"),
                 "CHAR" | "VARCHAR" | "TINYTEXT" | "TEXT" | "MEDIUMTEXT" | "LONGTEXT" => {
                     let v = val.try_decode::<String>().unwrap();
                     serializer.serialize_str(&v)
                 }
-                "TINYBLOB" => serializer.serialize_str("TINYBLOB"),
-                "BLOB" => serializer.serialize_str("BLOB"),
-                "MEDIUMBLOB" => serializer.serialize_str("MEDIUMBLOB"),
-                "LONGBLOB" => serializer.serialize_str("LONGBLOB"),
-
+                "TINYBLOB" | "BLOB" | "MEDIUMBLOB" | "LONGBLOB" | "BINARY" | "VARBINARY" => {
+                    let b64_str = val.try_decode::<Vec<u8>>().map(base64::encode).unwrap();
+                    serializer.serialize_str(&b64_str)
+                }
                 t => unreachable!(t),
             }
         }
@@ -258,16 +254,11 @@ impl QueryOutput {
                         "BIT" | "ENUM" | "SET" => val.try_decode::<String>(),
                         "DECIMAL" => val.try_decode::<BigDecimal>().map(|v| v.to_string()),
                         "GEOMETRY" | "JSON" => val.try_decode::<String>(),
-                        "BINARY" => Ok("BINARY".to_string()),
-                        "VARBINARY" => Ok("VARBINARY".to_string()),
                         "CHAR" | "VARCHAR" | "TINYTEXT" | "TEXT" | "MEDIUMTEXT" | "LONGTEXT" => {
                             val.try_decode::<String>()
                         }
-                        "TINYBLOB" => Ok("TINYBLOB".to_string()),
-                        "BLOB" => Ok("BLOB".to_string()),
-                        "MEDIUMBLOB" => Ok("MEDIUMBLOB".to_string()),
-                        "LONGBLOB" => Ok("LONGBLOB".to_string()),
-
+                        "TINYBLOB" | "BLOB" | "MEDIUMBLOB" | "LONGBLOB" | "BINARY"
+                        | "VARBINARY" => val.try_decode::<Vec<u8>>().map(base64::encode),
                         t => unreachable!(t),
                     }
                 };
