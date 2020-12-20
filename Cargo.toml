@@ -24,7 +24,7 @@ toml = "0.5.7"
 csv = "1.1"
 comfy-table = "1.4.2"
 anyhow = "1.0.34"
-sqlx = { version = "0.4.1", features = ["runtime-tokio-rustls", "mysql", "all-types", "bigdecimal"] }
+sqlx = { version = "0.4.2", features = ["runtime-tokio-rustls", "mysql", "all-types", "bigdecimal"] }
 chrono = "0.4.19"
 base64 = "0.13.0"
 bigdecimal = "0.2.0"
@@ -40,3 +40,4 @@ i18n-embed = { version = "0.9.4", features = ["fluent-system", "desktop-requeste
 rust-embed = "5"
 i18n-embed-fl = "0.2.0"
 once_cell = "1.5.2"
+warp = "0.2.5"

@@ -9,6 +9,7 @@ use anyhow::{anyhow, Context, Result};
 use std::io::Write;
 use structopt::StructOpt;
 
+mod http;
 pub mod shell;
 
 #[cfg_attr(feature = "zh-CN", doc = "数据库连接工具")]
@@ -94,6 +95,28 @@ pub enum DCliCommand {
         #[cfg_attr(feature = "en-US", doc = "profile name")]
         #[structopt(short, long)]
         profile: String,
+    },
+
+    Serve {
+        #[cfg_attr(feature = "zh-CN", doc = "连接配置名称")]
+        #[cfg_attr(feature = "en-US", doc = "profile name")]
+        #[structopt(short, long)]
+        profile: String,
+
+        #[cfg_attr(feature = "zh-CN", doc = "port 1 ~ 65535")]
+        #[cfg_attr(feature = "en-US", doc = "port 1 ~ 65535")]
+        #[structopt(default_value = "3030", short = "P", long)]
+        port: u16,
+
+        #[cfg_attr(
+            feature = "zh-CN",
+            doc = "命令 使用 @<文件路径> 读取 SQL 文件内容作为输入"
+        )]
+        #[cfg_attr(
+            feature = "en-US",
+            doc = "sql, use @<file_path> to read SQL file as input"
+        )]
+        command: Vec<String>,
     },
 }
 
@@ -370,6 +393,33 @@ impl DCliCommand {
                 Ok(())
             }
             DCliCommand::Shell { profile } => shell::Shell::run(config, profile).await,
+            DCliCommand::Serve {
+                profile,
+                port,
+                command,
+            } => {
+                let profile = config.try_get_profile(profile)?;
+                let session = Session::connect_with(&profile).await?;
+                let to_execute = if command.len() == 1 && command.first().unwrap().starts_with('@')
+                {
+                    read_file(&command.first().unwrap()[1..])?
+                } else {
+                    command.join(" ")
+                };
+                let to_execute = to_execute
+                    .split(';')
+                    .filter(|sql| !sql.is_empty())
+                    .collect::<Vec<&str>>();
+                if to_execute.is_empty() {
+                    return Err(anyhow!(fl!("empty-input")));
+                } else if to_execute.len() > 1 {
+                    return Err(anyhow!(fl!("too-many-input")));
+                } else {
+                    let output = session.query(to_execute.first().unwrap()).await?;
+                    http::serve(*port, output).await;
+                    Ok(())
+                }
+            }
         }
     }
 }
