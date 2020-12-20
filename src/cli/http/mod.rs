@@ -14,13 +14,28 @@ pub async fn serve(port: u16, output: QueryOutput) {
     let json_resp_clone = json_resp.clone();
     let csv_resp = output.to_csv().unwrap();
     let yaml_resp = output.to_yaml().unwrap();
-    let index = warp::get()
-        .and(warp::path::end())
-        .and(warp::fs::file("./assets/index.html"));
+    let index = warp::get().and(warp::path::end()).map(|| {
+        Response::builder()
+            .header(CT_KEY, "text/html")
+            .body(include_str!("assets/index.html"))
+    });
     let favicon = warp::get()
         .and(warp::path("favicon.ico"))
         .and(warp::path::end())
-        .and(warp::fs::file("./assets/favicon.svg"));
+        .map(|| {
+            Response::builder()
+                .header(CT_KEY, "image/svg+xml")
+                .body(include_str!("assets/favicon.svg"))
+        });
+    let loading_svg = warp::get()
+        .and(warp::path("assets"))
+        .and(warp::path("loader.svg"))
+        .and(warp::path::end())
+        .map(|| {
+            Response::builder()
+                .header(CT_KEY, "image/svg+xml")
+                .body(include_str!("assets/loader.svg"))
+        });
     let data_api = warp::get().and(warp::path("data")).map(move || {
         Response::builder()
             .header("Content-Type", "application/json")
@@ -52,6 +67,7 @@ pub async fn serve(port: u16, output: QueryOutput) {
         });
     let routes = index
         .or(favicon)
+        .or(loading_svg)
         .or(assets_filter())
         .or(data_api)
         .or(download_csv)
