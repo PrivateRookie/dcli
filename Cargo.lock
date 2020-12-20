@@ -511,7 +511,7 @@ dependencies = [
 
 [[package]]
 name = "dcli"
-version = "0.0.4"
+version = "0.0.5"
 dependencies = [
  "anyhow",
  "base64 0.13.0",

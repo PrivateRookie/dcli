@@ -97,6 +97,8 @@ pub enum DCliCommand {
         profile: String,
     },
 
+    #[cfg_attr(feature = "zh-CN", doc = "运行一个 HTTP　服务器以展示，下载数据")]
+    #[cfg_attr(feature = "en-US", doc = "run a HTTP server to display or download data")]
     Serve {
         #[cfg_attr(feature = "zh-CN", doc = "连接配置名称")]
         #[cfg_attr(feature = "en-US", doc = "profile name")]

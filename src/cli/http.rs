@@ -1,15 +1,7 @@
-use serde::Serialize;
 use warp::http::Response;
 use warp::{filters::BoxedFilter, Filter, Reply};
 
 use crate::output::QueryOutput;
-
-#[derive(Serialize)]
-struct DemoData {
-    id: u32,
-    name: String,
-    msg: String,
-}
 
 fn assets_filter() -> BoxedFilter<(impl Reply,)> {
     warp::path("assets").and(warp::fs::dir("./assets")).boxed()
