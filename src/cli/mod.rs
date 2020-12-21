@@ -1,12 +1,13 @@
-use crate::fl;
 use crate::{
     config::{Config, Lang, Profile, SslMode, TableStyle},
     mysql::Session,
     output::Format,
     utils::read_file,
 };
+use crate::{fl, query::QueryPlan};
 use anyhow::{anyhow, Context, Result};
-use std::io::Write;
+use http::serve_plan;
+use std::{collections::HashMap, io::Write};
 use structopt::StructOpt;
 
 mod http;
@@ -98,7 +99,10 @@ pub enum DCliCommand {
     },
 
     #[cfg_attr(feature = "zh-CN", doc = "运行一个 HTTP　服务器以展示，下载数据")]
-    #[cfg_attr(feature = "en-US", doc = "run a HTTP server to display or download data")]
+    #[cfg_attr(
+        feature = "en-US",
+        doc = "run a HTTP server to display or download data"
+    )]
     Serve {
         #[cfg_attr(feature = "zh-CN", doc = "连接配置名称")]
         #[cfg_attr(feature = "en-US", doc = "profile name")]
@@ -119,6 +123,10 @@ pub enum DCliCommand {
             doc = "sql, use @<file_path> to read SQL file as input"
         )]
         command: Vec<String>,
+    },
+
+    Plan {
+        plan: String,
     },
 }
 
@@ -421,6 +429,19 @@ impl DCliCommand {
                     http::serve(*port, output).await;
                     Ok(())
                 }
+            }
+            DCliCommand::Plan { plan } => {
+                let content = read_file(plan)?;
+                let plan: QueryPlan = toml::from_str(&content)?;
+                let mut plan_sessions: HashMap<String, Session> = HashMap::new();
+                for p in plan.profiles() {
+                    if let Ok(profile) = config.try_get_profile(&p) {
+                        let session = Session::connect_with(profile).await?;
+                        plan_sessions.insert(p, session);
+                    }
+                }
+                serve_plan(plan, plan_sessions).await;
+                Ok(())
             }
         }
     }

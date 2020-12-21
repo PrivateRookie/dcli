@@ -1,8 +1,14 @@
+use std::{collections::HashMap, convert::Infallible};
+
 use rust_embed::RustEmbed;
 use warp::Filter;
 use warp::{http::Response, path::FullPath};
 
-use crate::output::QueryOutput;
+use crate::{
+    mysql::Session,
+    output::{QueryOutput, QueryOutputMapSer},
+    query::QueryPlan,
+};
 
 #[derive(RustEmbed)]
 #[folder = "assets"]
@@ -91,4 +97,24 @@ pub async fn serve(port: u16, output: QueryOutput) {
         .or(download_json)
         .or(download_yaml);
     warp::serve(routes).run(([0, 0, 0, 0], port)).await;
+}
+
+async fn run(
+    full_path: FullPath,
+    plan: QueryPlan,
+    sessions: HashMap<String, Session>,
+) -> Result<impl warp::Reply, Infallible> {
+    let output = plan.query(full_path, &sessions).await.unwrap();
+    Ok(warp::reply::json(&QueryOutputMapSer(&output)))
+}
+
+pub async fn serve_plan(plan: QueryPlan, sessions: HashMap<String, Session>) {
+    let api = warp::get()
+        .and(warp::path(plan.prefix.clone()))
+        .and(warp::any())
+        .and(warp::path::full())
+        .and(warp::any().map(move || plan.clone()))
+        .and(warp::any().map(move || sessions.clone()))
+        .and_then(run);
+    warp::serve(api).run(([0, 0, 0, 0], 3030)).await;
 }

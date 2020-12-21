@@ -63,7 +63,7 @@ pub struct DCliColumn<'a> {
     pub val_ref: MySqlValueRef<'a>,
 }
 
-struct QueryOutputMapSer<'a>(&'a QueryOutput);
+pub struct QueryOutputMapSer<'a>(pub &'a QueryOutput);
 struct DcliRowMapSer<'a>(&'a MySqlRow);
 struct QueryOutputListSer<'a>(&'a QueryOutput);
 struct DcliRowListSer<'a>(&'a MySqlRow);

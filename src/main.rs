@@ -26,6 +26,7 @@ pub mod config;
 pub mod mysql;
 pub mod output;
 pub mod utils;
+pub mod query;
 
 pub static LOADER: Lazy<Arc<Mutex<FluentLanguageLoader>>> = Lazy::new(|| {
     let translations = Translations {};

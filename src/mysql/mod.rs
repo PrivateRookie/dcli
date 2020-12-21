@@ -12,6 +12,7 @@ mod constants;
 pub use constants::{KEYWORDS, SCHEMA_TABLE};
 
 /// stand for mysql client server session, containing tz info etc...
+#[derive(Clone)]
 pub struct Session {
     pool: MySqlPool,
 }
