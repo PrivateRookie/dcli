@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-cmn-Hans">
+<meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<header>
+  <title>DCli - Database Connection Mange Tool</title>
+  <link href="assets/bootstrap.min.css" rel="stylesheet">
+  <script src="assets/bootstrap.min.js"></script>
+  <script src="assets/axios.min.js"></script>
+
+</header>
+
+<body onload="getData('data')">
+  <div class="container-xxl">
+    <div class="row align-items-center">
+      <div class="col text-center">
+        <h1 class="big-title">DCli - Database Connection Mange Tool</h1>
+      </div>
+    </div>
+
+    <hr>
+    <div id="alert" role="alert"></div>
+    <div id="loading">
+      <img src="assets/loader.svg">
+      <span>Loading</span>
+    </div>
+    <div class="row justify-content-end">
+      <div class="col-1">
+        <button type="button" class="btn btn-success" onclick="getData('data')">Refresh</button>
+      </div>
+      <div class="col-1">
+        <div class="dropdown">
+          <a class="btn btn-secondary dropdow-toggle" href="#" role="button" id="dropdownMenuLik"
+            data-bs-toggle="dropdown">Download</a>
+          <ul class="dropdown-menu">
+            <li>
+              <a class="dropdown-item" href="download/csv" target="_blank" download="data.csv">Download CSV</a>
+            </li>
+            <li>
+              <a class="dropdown-item" href="download/json" target="_blank" download="data.json">Download Json</a>
+            </li>
+            <li>
+              <a class="dropdown-item" href="download/yaml" target="_blank" download="data.yaml">Download Yaml</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="row align-items-center">
+      <div class="col">
+        <div id="wrapper"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/gridjs.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="assets/gridjs.min.css">
+  <link rel="stylesheet" type="text/css" href="assets/style.css">
+  <script src="assets/script.js"></script>
+</body>
+
+
+</html>

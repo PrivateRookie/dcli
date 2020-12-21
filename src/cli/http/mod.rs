@@ -1,11 +1,12 @@
-use warp::http::Response;
-use warp::{filters::BoxedFilter, Filter, Reply};
+use rust_embed::RustEmbed;
+use warp::Filter;
+use warp::{http::Response, path::FullPath};
 
 use crate::output::QueryOutput;
 
-fn assets_filter() -> BoxedFilter<(impl Reply,)> {
-    warp::path("assets").and(warp::fs::dir("./assets")).boxed()
-}
+#[derive(RustEmbed)]
+#[folder = "assets"]
+struct Asset;
 
 const CT_KEY: &str = "Content-Type";
 
@@ -17,24 +18,41 @@ pub async fn serve(port: u16, output: QueryOutput) {
     let index = warp::get().and(warp::path::end()).map(|| {
         Response::builder()
             .header(CT_KEY, "text/html")
-            .body(include_str!("assets/index.html"))
+            .body(Asset::get("index.html").unwrap())
     });
+
+    let assets = warp::get()
+        .and(warp::path("assets"))
+        .and(warp::any())
+        .and(warp::path::full())
+        .map(move |path: FullPath| {
+            let relative_path = &path.as_str()[8..];
+            if let Some(content) = Asset::get(relative_path) {
+                let ct = if relative_path.ends_with("js") {
+                    "application/javascript; charset=utf-8"
+                } else if relative_path.ends_with("css") {
+                    "text/css"
+                } else if relative_path.ends_with("svg") {
+                    "image/svg+xml"
+                } else {
+                    "text/plain"
+                };
+                Response::builder()
+                    .header(CT_KEY, ct)
+                    .body(content.to_owned())
+            } else {
+                Response::builder()
+                    .status(404)
+                    .body(Asset::get("404").unwrap())
+            }
+        });
     let favicon = warp::get()
         .and(warp::path("favicon.ico"))
         .and(warp::path::end())
         .map(|| {
             Response::builder()
                 .header(CT_KEY, "image/svg+xml")
-                .body(include_str!("assets/favicon.svg"))
-        });
-    let loading_svg = warp::get()
-        .and(warp::path("assets"))
-        .and(warp::path("loader.svg"))
-        .and(warp::path::end())
-        .map(|| {
-            Response::builder()
-                .header(CT_KEY, "image/svg+xml")
-                .body(include_str!("assets/loader.svg"))
+                .body(Asset::get("favicon.svg").unwrap())
         });
     let data_api = warp::get().and(warp::path("data")).map(move || {
         Response::builder()
@@ -67,8 +85,7 @@ pub async fn serve(port: u16, output: QueryOutput) {
         });
     let routes = index
         .or(favicon)
-        .or(loading_svg)
-        .or(assets_filter())
+        .or(assets)
         .or(data_api)
         .or(download_csv)
         .or(download_json)
