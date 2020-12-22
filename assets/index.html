@@ -11,7 +11,7 @@
 
 </header>
 
-<body onload="getData('data')">
+<body onload="fetchMeta()">
   <div class="container-xxl">
     <div class="row align-items-center">
       <div class="col text-center">
@@ -21,15 +21,20 @@
 
     <hr>
     <div id="alert" role="alert"></div>
-    <div id="loading">
-      <img src="assets/loader.svg">
-      <span>Loading</span>
-    </div>
-    <div class="row justify-content-end">
-      <div class="col-1">
-        <button type="button" class="btn btn-success" onclick="getData('data')">Refresh</button>
+    <div class="row justify-content-center api-list">
+      <h2>All Queries</h2>
+      <div class="col">
+        <div id="meta"></div>
       </div>
+    </div>
+    <div class="row justify-content-center">
       <div class="col-1">
+        <div id="loading">
+          <img src="assets/loader.svg">
+          <span>Loading</span>
+        </div>
+      </div>
+      <!-- <div class="col-1">
         <div class="dropdown">
           <a class="btn btn-secondary dropdow-toggle" href="#" role="button" id="dropdownMenuLik"
             data-bs-toggle="dropdown">Download</a>
@@ -45,7 +50,7 @@
             </li>
           </ul>
         </div>
-      </div>
+      </div> -->
     </div>
     <div class="row align-items-center">
       <div class="col">

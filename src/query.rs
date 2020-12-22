@@ -48,4 +48,15 @@ impl QueryPlan {
         let sess = sessions.get(&query.profile).unwrap();
         Ok(sess.query(&query.sql).await?)
     }
+
+    pub fn with_meta(&self) -> Self {
+        let mut copied = self.clone();
+        copied.queries.push(Query {
+            name: "Api Meta".to_string(),
+            profile: "None".to_string(),
+            sql: "".to_string(),
+            url: "_meta".to_string(),
+        });
+        copied
+    }
 }

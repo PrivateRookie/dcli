@@ -11,6 +11,7 @@
         "logfile",
         "readline",
         "rustyline",
+        "sess",
         "sqlparser",
         "sqlx",
         "subcommand"
