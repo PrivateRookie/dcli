@@ -109,6 +109,22 @@ async fn run(
 }
 
 pub async fn serve_plan(plan: QueryPlan, sessions: HashMap<String, Session>) {
+    let prefix = plan.prefix.clone();
+    let urls: Vec<String> = plan
+        .queries
+        .iter()
+        .map(|q| format!("/{}/{}", prefix, q.url))
+        .collect();
+    let overview = warp::get().and(
+        warp::path(prefix)
+            .and(warp::path("_meta"))
+            .and(warp::path::full())
+            .map(move |path: FullPath| {
+                let mut total = vec![path.as_str().to_string()];
+                total.extend(urls.clone());
+                warp::reply::json(&total)
+            }),
+    );
     let api = warp::get()
         .and(warp::path(plan.prefix.clone()))
         .and(warp::any())
@@ -116,5 +132,6 @@ pub async fn serve_plan(plan: QueryPlan, sessions: HashMap<String, Session>) {
         .and(warp::any().map(move || plan.clone()))
         .and(warp::any().map(move || sessions.clone()))
         .and_then(run);
-    warp::serve(api).run(([0, 0, 0, 0], 3030)).await;
+    let routes = overview.or(api);
+    warp::serve(routes).run(([0, 0, 0, 0], 3030)).await;
 }

@@ -7,10 +7,10 @@ use crate::{mysql::Session, output::QueryOutput};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Query {
-    name: String,
-    profile: String,
-    sql: String,
-    url: String,
+    pub name: String,
+    pub profile: String,
+    pub sql: String,
+    pub url: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
