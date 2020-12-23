@@ -129,10 +129,13 @@ pub async fn serve_plan(plan: QueryPlan, sessions: HashMap<String, Session>) {
             .map(move || warp::reply::json(&plan_meta)),
     );
     let filter = std::env::var("RUST_LOG").unwrap_or_else(|_| "tracing=info,warp=debug".to_owned());
-    tracing_subscriber::fmt()
+    if let Err(e) = tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_span_events(FmtSpan::CLOSE)
-        .init();
+        .try_init()
+    {
+        println!("failed to set logger {}", e)
+    }
     let api = warp::get()
         .and(warp::path(plan.prefix.clone()))
         .and(warp::any())
