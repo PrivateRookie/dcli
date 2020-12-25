@@ -136,6 +136,11 @@ pub async fn serve_plan(plan: QueryPlan, sessions: HashMap<String, Session>) {
     {
         println!("failed to set logger {}", e)
     }
+    let open_api_schema = serde_json::to_string_pretty(&plan.open_api()).unwrap();
+    let open_api = warp::get()
+        .and(warp::path("open_api"))
+        .and(warp::path::end())
+        .map(move || open_api_schema.clone());
     let api = warp::get()
         .and(warp::path(plan.prefix.clone()))
         .and(warp::any())
@@ -143,6 +148,6 @@ pub async fn serve_plan(plan: QueryPlan, sessions: HashMap<String, Session>) {
         .and(warp::any().map(move || plan.clone()))
         .and(warp::any().map(move || sessions.clone()))
         .and_then(run);
-    let routes = serve_static().or(overview).or(api);
+    let routes = serve_static().or(overview).or(api).or(open_api);
     warp::serve(routes).run(([0, 0, 0, 0], 3030)).await;
 }

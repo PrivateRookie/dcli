@@ -1,85 +1,58 @@
+<!-- HTML for static distribution bundle build -->
 <!DOCTYPE html>
-<html lang="zh-cmn-Hans">
-  <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <header>
-    <title>DCli - Database Connection Mange Tool</title>
-    <link href="assets/bootstrap.min.css" rel="stylesheet" />
-    <script src="assets/bootstrap.min.js"></script>
-    <script src="assets/axios.min.js"></script>
-  </header>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Swagger UI</title>
+    <link rel="stylesheet" type="text/css" href="assets/swagger-ui.css" >
+    <style>
+      html
+      {
+        box-sizing: border-box;
+        overflow: -moz-scrollbars-vertical;
+        overflow-y: scroll;
+      }
 
-  <body onload="fetchMeta()">
-    <div class="container-xxl">
-      <div class="row align-items-center">
-        <div class="col text-center">
-          <h1 class="big-title">DCli - Database Connection Mange Tool</h1>
-        </div>
-      </div>
+      *,
+      *:before,
+      *:after
+      {
+        box-sizing: inherit;
+      }
 
-      <hr />
-      <div id="alert" role="alert"></div>
-      <div class="row justify-content-center api-list">
-        <h2>All Queries</h2>
-        <div class="col">
-          <div id="meta"></div>
-        </div>
-      </div>
-      <div class="row justify-content-center">
-        <div class="col-1">
-          <div id="loading">
-            <img src="assets/loader.svg" />
-            <span>Loading</span>
-          </div>
-        </div>
-        <!-- <div class="col-1">
-        <div class="dropdown">
-          <a class="btn btn-secondary dropdow-toggle" href="#" role="button" id="dropdownMenuLik"
-            data-bs-toggle="dropdown">Download</a>
-          <ul class="dropdown-menu">
-            <li>
-              <a class="dropdown-item" href="download/csv" target="_blank" download="data.csv">Download CSV</a>
-            </li>
-            <li>
-              <a class="dropdown-item" href="download/json" target="_blank" download="data.json">Download Json</a>
-            </li>
-            <li>
-              <a class="dropdown-item" href="download/yaml" target="_blank" download="data.yaml">Download Yaml</a>
-            </li>
-          </ul>
-        </div>
-      </div> -->
-      </div>
-      <div class="row justify-content-center">
-        <div class="col">
-          <div
-            id="err-card"
-            class="alert alert-danger d-none fade show text-center"
-          >
-            <h4>Fetch Data Error</h4>
-            <hr />
-            <span id="err-detail"></span>
-            <a
-              type="button"
-              class="btn btn-close btn-sm btn-outline"
-              onclick="dismissErr()"
-              aria-label="Close"
-              style="float: right"
-            ></a>
-          </div>
-        </div>
-      </div>
-      <div class="row align-items-center">
-        <div class="col">
-          <div id="wrapper"></div>
-        </div>
-      </div>
-    </div>
+      body
+      {
+        margin:0;
+        background: #fafafa;
+      }
+    </style>
+  </head>
 
-    <script src="assets/gridjs.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="assets/gridjs.min.css" />
-    <link rel="stylesheet" type="text/css" href="assets/style.css" />
-    <script src="assets/script.js"></script>
+  <body>
+    <div id="swagger-ui"></div>
+
+    <script src="assets/swagger-ui-bundle.js" charset="UTF-8"> </script>
+    <script src="assets/swagger-ui-standalone-preset.js" charset="UTF-8"> </script>
+    <script>
+    window.onload = function() {
+      // Begin Swagger UI call region
+      const ui = SwaggerUIBundle({
+        url: "http://localhost:3030/open_api",
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        plugins: [
+          SwaggerUIBundle.plugins.DownloadUrl
+        ],
+        layout: "StandaloneLayout"
+      })
+      // End Swagger UI call region
+
+      window.ui = ui
+    }
+  </script>
   </body>
 </html>
