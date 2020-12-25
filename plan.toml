@@ -1,20 +1,23 @@
 prefix = "api"
 
 [[queries]]
-name = "Select Binary Data"
+name = "bin"
 profile = "dev"
 sql = "SELECT data_blob, data_bin from bin"
 url = "bin"
+description = "选择所有的二进制文件"
 
 [[queries]]
-name = "Select Date, Time Data"
+name = "date"
+description = "Select Date, Time Data"
 profile = "dev"
 sql = "SELECT ts, datet from dt"
 url = "date"
 
 
 [[queries]]
-name = "随便试试"
+name = "todos"
+description = "随便试试"
 profile = "dev"
 sql = "SELECT * from todos limit 100"
 url = "todos"

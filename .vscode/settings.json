@@ -9,6 +9,7 @@
         "dcli",
         "favicon",
         "logfile",
+        "openapi",
         "readline",
         "rustyline",
         "sess",
