@@ -1,3 +1,27 @@
+<a name="0.0.7"></a>
+## 0.0.7 a database connection manage tool (2021-01-03)
+
+
+#### Bug Fixes
+
+*   update expore web page ([8e4eabbc](https://github.com/PrivateRookie/dcli/commit/8e4eabbc9ec43356c1a4f299f43a6b3b68bfb1a3))
+*   fix assets render error ([43296462](https://github.com/PrivateRookie/dcli/commit/432964629212806469dbe613de70dd92a950ae8c))
+*   remove unuse code & add `serve` command help ([48d7b0f4](https://github.com/PrivateRookie/dcli/commit/48d7b0f48e196bc0fdb129ed91fd60944c6150b7))
+*   fix datetime and timestamp decode ([afd8f65c](https://github.com/PrivateRookie/dcli/commit/afd8f65c039bbd9f24a2f900165771cd3dbf9826))
+
+#### Features
+
+*   support paging ([23412c82](https://github.com/PrivateRookie/dcli/commit/23412c829c2d65585fc1f4c5a20908d157ddf0f3))
+*   support openapiv3 ([32c8f4f5](https://github.com/PrivateRookie/dcli/commit/32c8f4f5fc951f40e0a06a5950e9a412303e8bab))
+*   support browning multi api ([2d7c8622](https://github.com/PrivateRookie/dcli/commit/2d7c8622d6471c62d090cc2818c91c66d7f30d60))
+*   add meta api to list all api ([475d0f7d](https://github.com/PrivateRookie/dcli/commit/475d0f7d26148d72ea9fa8103dcec0f7fcf6174f))
+*   add serve plan as http api ([02e29765](https://github.com/PrivateRookie/dcli/commit/02e29765dc7105adbb2b0079e009757712e22196))
+*   make web service running under offline & change static file serving ([71c64a10](https://github.com/PrivateRookie/dcli/commit/71c64a1021acb62a53181c87408334aeccc9543e))
+*   add web page to preview and download ([f82e8642](https://github.com/PrivateRookie/dcli/commit/f82e8642c406113c4c5c5ae6ffd3b6fec9471a7b))
+*   encode binary data as base64 string ([7d5ed871](https://github.com/PrivateRookie/dcli/commit/7d5ed8715438728f3013c42c7513a04c72dfc952))
+
+
+
 <a name="0.0.4"></a>
 ## 0.0.4 support export data & bug fix (2020-12-17)
 

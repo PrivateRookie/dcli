@@ -1,6 +1,6 @@
 [package]
 name = "dcli"
-version = "0.0.6"
+version = "0.0.7"
 authors = ["PrivateRookie <996514515@qq.com>"]
 edition = "2018"
 description = "MySQL 数据库连接管理工具 | MySQL connection manage tool"
