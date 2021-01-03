@@ -165,6 +165,35 @@ AsciiFull AsciiMd Utf8Full Utf8HBorderOnly
 
 但 dcli 属于早期阶段，所以很多功能仍然不完整，如有问题请开 ISSUE。
 
+#### 使用 `dcli plan` 运行一个 http 服务器
+
+如果你有多个 SQL 语句需要共享，你可以使用 `plan` 子命令启动一个 http 服务，并将所有 SQL 作为一个 http 接口。
+
+首先你需要定义一个 `toml` 文件，可以参考 [plan.toml](./plan.toml)
+
+```toml
+# http 接口前置路由，对启用代理或 url 冲突时非常有用
+prefix = "api"
+
+[[queries]]
+# 设置此 SQL 使用哪个数据库连接配置
+profile = "xxx"
+# 对应的 SQL 语句
+sql = "select * from xxxx"
+# 此 SQL 对应的 URL 地址，**不能以 `/` 包围**
+url = "some_url"
+# 此 SQL 描述
+description = "一些有用的描述"
+# 非必填，是否分页，如果原 SQL 中最外层含有 `limit` 或 `offset` 则分页不起作用
+# 默认开启，可以设置 false 关闭
+paging = true
+```
+
+接着运行 `dcli plan plan.toml`，dcli 会在 3030 端口启动 http 服务，打开网页会看到 swagger ui, 按照文档浏览使用即可
+
+![index](./docs/assets/swagger_demo.png)
+
+
 ### 设置语言
 
 默认情况下 dcli 会尝试读取本地语言设置,自动设置语言. 如果这不和预期, 可以试用
