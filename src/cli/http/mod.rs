@@ -8,7 +8,7 @@ use warp::{http::Response, path::FullPath};
 use crate::{
     mysql::Session,
     output::{QueryOutput, QueryOutputMapSer},
-    query::QueryPlan,
+    query::{Paging, QueryPlan},
 };
 
 #[derive(RustEmbed)]
@@ -113,10 +113,11 @@ fn serve_static() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejec
 
 async fn run(
     full_path: FullPath,
+    paging: Option<Paging>,
     plan: QueryPlan,
     sessions: HashMap<String, Session>,
 ) -> Result<impl warp::Reply, Infallible> {
-    let output = plan.query(full_path, &sessions).await.unwrap();
+    let output = plan.query(full_path, paging, &sessions).await.unwrap();
     Ok(warp::reply::json(&QueryOutputMapSer(&output)))
 }
 
@@ -141,10 +142,14 @@ pub async fn serve_plan(plan: QueryPlan, sessions: HashMap<String, Session>) {
         .and(warp::path("openapi.json"))
         .and(warp::path::end())
         .map(move || open_api_schema.clone());
+    let opt_query = warp::query::<Paging>()
+        .map(Some)
+        .or_else(|_| async { Ok::<(Option<Paging>,), std::convert::Infallible>((None,)) });
     let api = warp::get()
         .and(warp::path(plan.prefix.clone()))
         .and(warp::any())
         .and(warp::path::full())
+        .and(opt_query)
         .and(warp::any().map(move || plan.clone()))
         .and(warp::any().map(move || sessions.clone()))
         .and_then(run);
