@@ -1,25 +1,16 @@
-use std::{
-    collections::{HashMap, HashSet},
-    path::Path,
-};
+use std::collections::{HashMap, HashSet};
 
 use indexmap::IndexMap;
 use openapiv3::{
     Contact, Info, IntegerType, MediaType, OpenAPI, Operation, Parameter, ParameterData,
-    ParameterSchemaOrContent, PathItem, Paths, ReferenceOr, RequestBody, Response, Responses,
-    Schema, SchemaData, SchemaKind, Server, Type,
+    ParameterSchemaOrContent, PathItem, ReferenceOr, Response, Responses, Schema, SchemaData,
+    SchemaKind, Server, Type,
 };
-use serde::{
-    ser::{SerializeMap, SerializeSeq},
-    Deserialize, Serialize,
-};
+use serde::{Deserialize, Serialize};
 use sqlparser::{ast::Expr, dialect::MySqlDialect, parser::Parser};
 use warp::path::FullPath;
 
-use crate::{
-    mysql::Session,
-    output::{QueryOutput, QueryOutputMapSer},
-};
+use crate::{mysql::Session, output::QueryOutput};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Paging {
