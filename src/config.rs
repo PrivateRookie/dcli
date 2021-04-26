@@ -224,7 +224,7 @@ impl Profile {
         uri
     }
 
-    pub fn cmd(&self, piped: bool, args: &String) -> std::process::Command {
+    pub fn cmd(&self, piped: bool, args: &Vec<String>) -> std::process::Command {
         let mut command = std::process::Command::new("mysql");
         if piped {
             command
@@ -240,7 +240,7 @@ impl Profile {
         }
         command.args(&["--host", &self.host, "--port", &self.port.to_string()]);
         command.args(&["--database", &self.db]);
-        command.args(args.split(" ").collect::<Vec<&str>>());
+        command.args(args);
         command
     }
 

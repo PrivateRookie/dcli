@@ -42,9 +42,13 @@ pub enum DCliCommand {
         #[cfg_attr(feature = "zh-CN", doc = "连接配置名称")]
         #[cfg_attr(feature = "en-US", doc = "profile name")]
         profile: String,
-        #[cfg_attr(feature = "zh-CN", doc = "mysql 命令额外参数")]
-        #[cfg_attr(feature = "en-US", doc = "mysql extra arguments")]
-        args: String,
+        #[cfg_attr(feature = "zh-CN", doc = "mysql 命令额外参数, 使用 -e=`` 传递参数")]
+        #[cfg_attr(
+            feature = "en-US",
+            doc = "mysql extra arguments, use -e=`` to pass arguments"
+        )]
+        #[structopt(short, long)]
+        extra: Vec<String>,
     },
     #[cfg_attr(feature = "zh-CN", doc = "使用一个配置运行命令")]
     #[cfg_attr(feature = "en-US", doc = "use a profile to exec sql")]
@@ -65,7 +69,7 @@ pub enum DCliCommand {
         command: Vec<String>,
         #[cfg_attr(feature = "zh-CN", doc = "是否垂直打印数据")]
         #[cfg_attr(feature = "en-US", doc = "print table in vertical form")]
-        #[structopt(long)]
+        #[structopt(long, short = "G")]
         vertical: bool,
     },
 
@@ -267,9 +271,9 @@ impl DCliCommand {
                 };
                 Ok(())
             }
-            DCliCommand::Conn { profile, args } => {
+            DCliCommand::Conn { profile, extra } => {
                 let profile = config.try_get_profile(profile)?;
-                let mut sys_cmd = profile.cmd(false, args);
+                let mut sys_cmd = profile.cmd(false, extra);
                 let child = sys_cmd
                     .spawn()
                     .with_context(|| fl!("launch-process-failed"))?;
