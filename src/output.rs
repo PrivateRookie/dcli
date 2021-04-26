@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use comfy_table::*;
 use serde::{
     ser::{SerializeMap, SerializeSeq},
     Serialize,
@@ -209,63 +208,104 @@ impl<'a> Serialize for DCliColumn<'a> {
 }
 
 impl QueryOutput {
-    pub fn to_print_table(&self, config: &Config) -> Table {
+    fn convert_col(row: &MySqlRow, col: &MySqlColumn) -> String {
+        let val_ref = row.try_get_raw(col.ordinal()).unwrap();
+        let val = ValueRef::to_owned(&val_ref);
+        let val = if val.is_null() {
+            Ok(String::new())
+        } else {
+            let ty_info = col.type_info();
+            // ref: https://github.com/launchbadge/sqlx/blob/7a707179448a1787f106138f4821ab3fa062db2a/sqlx-core/src/mysql/protocol/text/column.rs#L172
+            match ty_info.name() {
+                "BOOLEAN" => val.try_decode::<bool>().map(|v| v.to_string()),
+                "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "INT UNSIGNED"
+                | "MEDIUMINT UNSIGNED" | "BIGINT UNSIGNED" => {
+                    val.try_decode::<u64>().map(|v| v.to_string())
+                }
+                "TINYINT" | "SMALLINT" | "INT" | "MEDIUMINT" | "BIGINT" => {
+                    val.try_decode::<i64>().map(|v| v.to_string())
+                }
+                "FLOAT" => val.try_decode::<f32>().map(|v| v.to_string()),
+                "DOUBLE" => val.try_decode::<f64>().map(|v| v.to_string()),
+                "NULL" => Ok("NULL".to_string()),
+                "DATE" => val.try_decode::<Date>().map(|v| v.to_string()),
+                "TIME" => val.try_decode::<Time>().map(|v| v.to_string()),
+                "YEAR" => val.try_decode::<u64>().map(|v| v.to_string()),
+                // NOTE not sure for this
+                "DATETIME" => val
+                    .try_decode::<sqlx::types::time::OffsetDateTime>()
+                    .map(|v| v.to_string()),
+                "TIMESTAMP" => val
+                    .try_decode::<chrono::DateTime<Utc>>()
+                    .map(|v| v.to_string()),
+                "BIT" | "ENUM" | "SET" => val.try_decode::<String>(),
+                "DECIMAL" => val.try_decode::<BigDecimal>().map(|v| v.to_string()),
+                "GEOMETRY" | "JSON" => val.try_decode::<String>(),
+                "CHAR" | "VARCHAR" | "TINYTEXT" | "TEXT" | "MEDIUMTEXT" | "LONGTEXT" => {
+                    val.try_decode::<String>()
+                }
+                "TINYBLOB" | "BLOB" | "MEDIUMBLOB" | "LONGBLOB" | "BINARY" | "VARBINARY" => {
+                    val.try_decode::<Vec<u8>>().map(base64::encode)
+                }
+                t => unreachable!(t),
+            }
+        };
+        val.unwrap()
+    }
+
+    fn vertical_print_table(&self, config: &Config) {
         if self.rows.is_empty() {
-            return config.new_table();
+            return;
+        }
+        let keys = self.rows.first().unwrap().columns();
+        if keys.is_empty() {
+            return;
+        }
+        for (row_idx, row) in self.rows.iter().enumerate() {
+            let mut table = config.new_table();
+            table.load_preset("        :          ");
+
+            for (idx, col) in row.columns().iter().enumerate() {
+                table.add_row(&[
+                    keys.get(idx).unwrap().name(),
+                    &QueryOutput::convert_col(row, col),
+                ]);
+            }
+            println!(
+                "[{:4} row] *******************************************",
+                row_idx
+            );
+            println!("{}", table);
+        }
+    }
+
+    fn horizontal_print_table(&self, config: &Config) {
+        if self.rows.is_empty() {
+            return;
         }
         let header = self.rows.first().unwrap();
         let header_cols = header.columns();
         if header_cols.is_empty() {
-            return config.new_table();
+            return;
         }
         let mut table = config.new_table();
         table.set_header(header_cols.iter().map(|col| col.name()));
         self.rows.iter().for_each(|row| {
-            table.add_row(row.columns().iter().map(|col| {
-                let val_ref = row.try_get_raw(col.ordinal()).unwrap();
-                let val = ValueRef::to_owned(&val_ref);
-                let val = if val.is_null() {
-                    Ok(String::new())
-                } else {
-                    let ty_info = col.type_info();
-                    // ref: https://github.com/launchbadge/sqlx/blob/7a707179448a1787f106138f4821ab3fa062db2a/sqlx-core/src/mysql/protocol/text/column.rs#L172
-                    match ty_info.name() {
-                        "BOOLEAN" => val.try_decode::<bool>().map(|v| v.to_string()),
-                        "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "INT UNSIGNED"
-                        | "MEDIUMINT UNSIGNED" | "BIGINT UNSIGNED" => {
-                            val.try_decode::<u64>().map(|v| v.to_string())
-                        }
-                        "TINYINT" | "SMALLINT" | "INT" | "MEDIUMINT" | "BIGINT" => {
-                            val.try_decode::<i64>().map(|v| v.to_string())
-                        }
-                        "FLOAT" => val.try_decode::<f32>().map(|v| v.to_string()),
-                        "DOUBLE" => val.try_decode::<f64>().map(|v| v.to_string()),
-                        "NULL" => Ok("NULL".to_string()),
-                        "DATE" => val.try_decode::<Date>().map(|v| v.to_string()),
-                        "TIME" => val.try_decode::<Time>().map(|v| v.to_string()),
-                        "YEAR" => val.try_decode::<u64>().map(|v| v.to_string()),
-                        // NOTE not sure for this
-                        "DATETIME" => val
-                            .try_decode::<sqlx::types::time::OffsetDateTime>()
-                            .map(|v| v.to_string()),
-                        "TIMESTAMP" => val
-                            .try_decode::<chrono::DateTime<Utc>>()
-                            .map(|v| v.to_string()),
-                        "BIT" | "ENUM" | "SET" => val.try_decode::<String>(),
-                        "DECIMAL" => val.try_decode::<BigDecimal>().map(|v| v.to_string()),
-                        "GEOMETRY" | "JSON" => val.try_decode::<String>(),
-                        "CHAR" | "VARCHAR" | "TINYTEXT" | "TEXT" | "MEDIUMTEXT" | "LONGTEXT" => {
-                            val.try_decode::<String>()
-                        }
-                        "TINYBLOB" | "BLOB" | "MEDIUMBLOB" | "LONGBLOB" | "BINARY"
-                        | "VARBINARY" => val.try_decode::<Vec<u8>>().map(base64::encode),
-                        t => unreachable!(t),
-                    }
-                };
-                val.unwrap()
-            }));
+            table.add_row(
+                row.columns()
+                    .iter()
+                    .map(|col| QueryOutput::convert_col(row, col)),
+            );
         });
-        table
+        println!("{}", table)
+    }
+
+    pub fn to_print_table(&self, config: &Config, vertical: bool) {
+        if vertical {
+            self.vertical_print_table(config);
+        } else {
+            self.horizontal_print_table(config);
+        }
     }
 
     pub fn to_csv(&self) -> Result<String> {

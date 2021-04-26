@@ -1,5 +1,5 @@
 use crate::{
-    config::{Config, Lang, Profile, SslMode, TableStyle},
+    config::{Config, ContentArrange, Lang, Profile, SslMode, TableStyle},
     mysql::Session,
     output::Format,
     utils::read_file,
@@ -42,6 +42,9 @@ pub enum DCliCommand {
         #[cfg_attr(feature = "zh-CN", doc = "连接配置名称")]
         #[cfg_attr(feature = "en-US", doc = "profile name")]
         profile: String,
+        #[cfg_attr(feature = "zh-CN", doc = "mysql 命令额外参数")]
+        #[cfg_attr(feature = "en-US", doc = "mysql extra arguments")]
+        args: String,
     },
     #[cfg_attr(feature = "zh-CN", doc = "使用一个配置运行命令")]
     #[cfg_attr(feature = "en-US", doc = "use a profile to exec sql")]
@@ -60,6 +63,10 @@ pub enum DCliCommand {
             doc = "sql, use @<file_path> to read SQL file as input"
         )]
         command: Vec<String>,
+        #[cfg_attr(feature = "zh-CN", doc = "是否垂直打印数据")]
+        #[cfg_attr(feature = "en-US", doc = "print table in vertical form")]
+        #[structopt(long)]
+        vertical: bool,
     },
 
     #[cfg_attr(feature = "zh-CN", doc = "导出查询结果")]
@@ -217,7 +224,18 @@ pub enum StyleCmd {
             feature = "en-US",
             doc = "choices: AsciiFull AsciiMd Utf8Full Utf8HBorderOnly"
         )]
-        style: TableStyle,
+        #[structopt(long)]
+        style: Option<TableStyle>,
+        #[cfg_attr(
+            feature = "zh-CN",
+            doc = "宽度样式 选项: disabled, dynamic, dynamic-full-width"
+        )]
+        #[cfg_attr(
+            feature = "en-US",
+            doc = "content width style, options: disabled, dynamic, dynamic-full-width"
+        )]
+        #[structopt(long)]
+        arrange: Option<ContentArrange>,
     },
     #[cfg_attr(feature = "zh-CN", doc = "设置语言")]
     #[cfg_attr(feature = "en-US", doc = "set language")]
@@ -233,8 +251,13 @@ impl DCliCommand {
         match self {
             DCliCommand::Style { cmd } => {
                 match cmd {
-                    StyleCmd::Table { style } => {
-                        config.table_style = style.clone();
+                    StyleCmd::Table { style, arrange } => {
+                        if let Some(t_style) = style {
+                            config.table_style = t_style.clone()
+                        }
+                        if let Some(arr) = arrange {
+                            config.arrangement = arr.clone()
+                        }
                         config.save()?;
                     }
                     StyleCmd::Lang { name } => {
@@ -244,16 +267,20 @@ impl DCliCommand {
                 };
                 Ok(())
             }
-            DCliCommand::Conn { profile } => {
+            DCliCommand::Conn { profile, args } => {
                 let profile = config.try_get_profile(profile)?;
-                let mut sys_cmd = profile.cmd(false);
+                let mut sys_cmd = profile.cmd(false, args);
                 let child = sys_cmd
                     .spawn()
                     .with_context(|| fl!("launch-process-failed"))?;
                 child.wait_with_output().unwrap();
                 Ok(())
             }
-            DCliCommand::Exec { profile, command } => {
+            DCliCommand::Exec {
+                profile,
+                command,
+                vertical,
+            } => {
                 let profile = config.try_get_profile(profile)?;
                 let session = Session::connect_with(&profile).await?;
                 let to_execute = if command.len() == 1 && command.first().unwrap().starts_with('@')
@@ -265,7 +292,7 @@ impl DCliCommand {
                 for sql in to_execute.split(';') {
                     if !sql.is_empty() {
                         let output = session.query(sql).await?;
-                        println!("{}", output.to_print_table(&config));
+                        output.to_print_table(&config, vertical.clone());
                     }
                 }
                 session.close().await;

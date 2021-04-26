@@ -21,7 +21,47 @@ pub struct Config {
     pub profiles: HashMap<String, Profile>,
     pub table_style: TableStyle,
     pub lang: Option<Lang>,
-    pub debug: bool
+    #[serde(default)]
+    pub arrangement: ContentArrange,
+    pub debug: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ContentArrange {
+    Disabled,
+    Dynamic,
+    DynamicFullWidth,
+}
+
+impl Default for ContentArrange {
+    fn default() -> Self {
+        ContentArrange::Dynamic
+    }
+}
+
+impl FromStr for ContentArrange {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let lower = s.to_ascii_lowercase();
+        let arr = match lower.as_str() {
+            "disabled" => Ok(ContentArrange::Disabled),
+            "dynamic" => Ok(ContentArrange::Disabled),
+            "dynamic-full-width" => Ok(ContentArrange::Disabled),
+            _ => Err(anyhow!(fl!("invalid-value", val = s))),
+        }?;
+        Ok(arr)
+    }
+}
+
+impl ToString for ContentArrange {
+    fn to_string(&self) -> String {
+        match self {
+            ContentArrange::Disabled => "disabled".to_string(),
+            ContentArrange::Dynamic => "dynamic".to_string(),
+            ContentArrange::DynamicFullWidth => "dynamic-full-width".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -184,7 +224,7 @@ impl Profile {
         uri
     }
 
-    pub fn cmd(&self, piped: bool) -> std::process::Command {
+    pub fn cmd(&self, piped: bool, args: &String) -> std::process::Command {
         let mut command = std::process::Command::new("mysql");
         if piped {
             command
@@ -200,6 +240,7 @@ impl Profile {
         }
         command.args(&["--host", &self.host, "--port", &self.port.to_string()]);
         command.args(&["--database", &self.db]);
+        command.args(args.split(" ").collect::<Vec<&str>>());
         command
     }
 
@@ -270,9 +311,13 @@ impl Config {
             TableStyle::Utf8Full => UTF8_FULL,
             TableStyle::Utf8HBorderOnly => UTF8_HORIZONTAL_BORDERS_ONLY,
         };
-        table
-            .load_preset(preset)
-            .set_content_arrangement(ContentArrangement::Dynamic);
+        table.load_preset(preset);
+        let arr = match self.arrangement {
+            ContentArrange::Disabled => ContentArrangement::Disabled,
+            ContentArrange::Dynamic => ContentArrangement::Dynamic,
+            ContentArrange::DynamicFullWidth => ContentArrangement::DynamicFullWidth,
+        };
+        table.set_content_arrangement(arr);
         table
     }
 

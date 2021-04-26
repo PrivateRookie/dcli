@@ -82,10 +82,7 @@ impl Shell {
                                                 for sql in content.split(';') {
                                                     if !sql.is_empty() {
                                                         let output = session.query(sql).await?;
-                                                        println!(
-                                                            "{}",
-                                                            output.to_print_table(&config)
-                                                        );
+                                                        output.to_print_table(&config, false);
                                                     }
                                                 }
                                             }
@@ -98,7 +95,7 @@ impl Shell {
                                 } else {
                                     match session.query(&line).await {
                                         Ok(output) => {
-                                            println!("{}", output.to_print_table(config));
+                                            output.to_print_table(config, false);
                                             rl.add_history_entry(line.as_str());
                                         }
                                         Err(e) => {
