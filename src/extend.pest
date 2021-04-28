@@ -1,0 +1,53 @@
+WS0 = _{ (" " | "\t")* }
+WS1 = _{ (" " | "\t")+ }
+
+// extended comment, SQL line commend follow by "param"
+prefix = _{ "-"{2} ~ WS1 ~ "param" }
+
+// variable identifer, start with alpha, consist of alpha, number and "_"
+ident = { ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")* }
+
+// str should be quote by single quote "'"
+str_ty = { "str" }
+// unbound array
+str_un_list_ty = { "[" ~ WS0 ~ str_ty ~ WS0 ~ "]"}
+// bounded array
+str_list_ty = { "[" ~ WS0 ~ str_ty ~ WS0 ~ ";" ~ WS0 ~ ASCII_DIGIT+ ~ WS0 ~ "]" }
+str_val = { "'" ~ ("\\'" | (!"'" ~ ANY) )* ~ "'" }
+str_list_val = { "[" ~ (WS0 ~ str_val ~ WS0 ~ ",")* ~ WS0 ~"]" }
+param_str = { ident ~ WS0 ~ ":" ~ WS0 ~ str_ty ~ (WS0 ~ "=" ~ WS0 ~ str_val)? }
+param_str_list = { ident ~ WS0 ~ ":" ~ WS0 ~ str_list_ty ~ (WS0 ~ "=" ~ WS0 ~ (str_list_val | str_un_list_ty))? }
+param_str_un_list = { ident ~ WS0 ~ ":" ~ WS0 ~  str_un_list_ty ~ (WS0 ~ "=" ~ WS0 ~ (str_list_val | str_un_list_ty))? }
+
+
+// int support sign, should be valid i64
+int_ty = { "int" }
+int_un_list_ty = { "[" ~ WS0 ~ int_ty ~ WS0 ~ "]"}
+int_list_ty = { "[" ~ WS0 ~ int_ty ~ WS0 ~ ";" ~ WS0 ~ ASCII_DIGIT+ ~ WS0 ~ "]" }
+int_val = { ("+" | "-")? ~ ASCII_NONZERO_DIGIT ~ ASCII_DIGIT+ }
+int_list_val = { "[" ~ (WS0 ~ int_val ~ WS0 ~ ",")* ~ WS0~ "]" }
+param_int = { ident ~ WS0 ~ ":" ~ WS0 ~ int_ty ~ (WS0 ~ "=" ~ WS0 ~ int_val)? }
+param_int_list = { ident ~ WS0 ~ ":" ~ WS0 ~ int_list_ty ~ (WS0 ~ "=" ~ WS0 ~ (int_list_val | int_un_list_ty))? }
+param_int_un_list = { ident ~ WS0 ~ ":" ~ WS0 ~ int_un_list_ty ~ (WS0 ~ "=" ~ WS0 ~ (int_list_val | int_un_list_ty))? }
+
+
+// int support sign, should be valid f64
+float_ty = { "float" }
+float_un_list_ty = { "[" ~ WS0 ~ float_ty ~ WS0 ~ "]"}
+float_list_ty = { "[" ~ WS0 ~ float_ty ~ WS0 ~ ";" ~ WS0 ~ ASCII_DIGIT+ ~ WS0 ~ "]" }
+float_val = { ("+" | "-")? ~ ASCII_NONZERO_DIGIT ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+float_list_val = { "[" ~ (WS0 ~ float_val ~ WS0 ~ ",")* ~ "]" }
+param_float = { ident ~ WS0 ~ ":" ~ WS0 ~ float_ty ~ (WS0 ~ "=" ~ WS0 ~ float_val)? }
+param_float_list = { ident ~ WS0 ~ ":" ~ WS0 ~ float_list_ty ~ (WS0 ~ "=" ~ WS0 ~ (float_list_val | float_un_list_ty))? }
+param_float_un_list = { ident ~ WS0 ~ ":" ~ WS0 ~  float_un_list_ty ~ (WS0 ~ "=" ~ WS0 ~ (float_list_val | float_un_list_ty))? }
+
+
+// raw type doesn't support list, and should be wrapped by "#"
+raw_ty = { "raw" }
+raw_val = { "#" ~ ("\\#" | (!"#" ~ ANY))* ~ "#" }
+param_raw = { ident ~ WS0 ~ ":" ~ WS0 ~ raw_ty ~ (WS0 ~ "=" ~ WS0 ~ raw_val)? }
+
+param = { param_raw | param_str | param_str_list |param_str_un_list|  param_int | param_int_list |param_int_un_list|  param_float | param_float_list | param_float_un_list }
+
+help_msg = { ANY* }
+line = { SOI ~ prefix ~ WS1 ~ param ~  WS0 ~ ("/"{2} ~ WS1 ~ help_msg)? ~ EOI }
