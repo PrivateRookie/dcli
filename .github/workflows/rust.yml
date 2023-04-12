@@ -20,3 +20,5 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+    - name: Security and Licence Scan
+      uses: ShiftLeftSecurity/scan-action@v1.3.0
